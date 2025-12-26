@@ -27,11 +27,13 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win: BrowserWindow | null
 
 function createWindow() {
-  // VITE_PUBLIC は上で必ず設定されるが、型安全のためフォールバックを設定
-  const publicDir = process.env.VITE_PUBLIC ?? RENDERER_DIST
-
   win = new BrowserWindow({
-    icon: path.join(publicDir, 'electron-vite.svg'),
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    frame: false, // フレームレス
+    titleBarStyle: 'hidden',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -100,4 +102,40 @@ ipcMain.handle(IpcChannels.LOGOUT, async () => {
  */
 ipcMain.handle(IpcChannels.LIST, async () => {
   return await getList()
+})
+
+// =============================================================================
+// Window Control IPC Handlers
+// =============================================================================
+
+/**
+ * window:minimize - ウィンドウを最小化
+ */
+ipcMain.handle('window:minimize', () => {
+  win?.minimize()
+})
+
+/**
+ * window:maximize - ウィンドウを最大化/元に戻す
+ */
+ipcMain.handle('window:maximize', () => {
+  if (win?.isMaximized()) {
+    win.unmaximize()
+  } else {
+    win?.maximize()
+  }
+})
+
+/**
+ * window:close - ウィンドウを閉じる
+ */
+ipcMain.handle('window:close', () => {
+  win?.close()
+})
+
+/**
+ * window:isMaximized - 最大化状態を取得
+ */
+ipcMain.handle('window:isMaximized', () => {
+  return win?.isMaximized() ?? false
 })

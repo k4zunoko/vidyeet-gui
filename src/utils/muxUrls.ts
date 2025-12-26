@@ -12,10 +12,10 @@ const MUX_IMAGE_BASE = 'https://image.mux.com';
 const MUX_STREAM_BASE = 'https://stream.mux.com';
 
 /** デフォルトのサムネイル幅 */
-const DEFAULT_THUMBNAIL_WIDTH = 320;
+const DEFAULT_THUMBNAIL_WIDTH = 200;
 
 /** デフォルトのGIF幅 */
-const DEFAULT_GIF_WIDTH = 320;
+const DEFAULT_GIF_WIDTH = 200;
 
 /**
  * サムネイルURLを生成

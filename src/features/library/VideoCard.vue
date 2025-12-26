@@ -82,13 +82,6 @@ function handleMouseLeave() {
     <div v-if="isSelected" class="selected-indicator">
       <span class="selected-badge">再生中</span>
     </div>
-
-    <!-- アセットID（デバッグ用、将来は非表示にしてもよい） -->
-    <div class="card-footer">
-      <span class="asset-id" :title="video.assetId">
-        {{ video.assetId.slice(0, 8) }}...
-      </span>
-    </div>
   </div>
 </template>
 
@@ -156,15 +149,5 @@ function handleMouseLeave() {
   color: white;
   background: var(--color-primary);
   border-radius: 4px;
-}
-
-.card-footer {
-  padding: 0.5rem;
-}
-
-.asset-id {
-  font-size: 0.625rem;
-  font-family: monospace;
-  color: var(--color-text-muted);
 }
 </style>

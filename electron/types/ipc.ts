@@ -96,3 +96,11 @@ export interface VidyeetApi {
   logout(): Promise<LogoutResponse | IpcError>;
   list(): Promise<ListResponse | IpcError>;
 }
+
+/** ウィンドウ操作API */
+export interface WindowApi {
+  minimize(): Promise<void>;
+  maximize(): Promise<void>;
+  close(): Promise<void>;
+  isMaximized(): Promise<boolean>;
+}

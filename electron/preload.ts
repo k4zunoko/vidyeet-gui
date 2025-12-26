@@ -2,6 +2,7 @@ import { ipcRenderer, contextBridge } from 'electron'
 import {
   IpcChannels,
   type VidyeetApi,
+  type WindowApi,
   type LoginRequest,
   type StatusResponse,
   type LoginResponse,
@@ -37,6 +38,34 @@ const vidyeetApi: VidyeetApi = {
 }
 
 contextBridge.exposeInMainWorld('vidyeet', vidyeetApi)
+
+// =============================================================================
+// Window Control API
+// =============================================================================
+
+/**
+ * ウィンドウ操作API - window.windowControl として公開
+ * フレームレスウィンドウの操作用
+ */
+const windowApi: WindowApi = {
+  async minimize(): Promise<void> {
+    return await ipcRenderer.invoke('window:minimize')
+  },
+
+  async maximize(): Promise<void> {
+    return await ipcRenderer.invoke('window:maximize')
+  },
+
+  async close(): Promise<void> {
+    return await ipcRenderer.invoke('window:close')
+  },
+
+  async isMaximized(): Promise<boolean> {
+    return await ipcRenderer.invoke('window:isMaximized')
+  },
+}
+
+contextBridge.exposeInMainWorld('windowControl', windowApi)
 
 // =============================================================================
 // Legacy ipcRenderer API (for backward compatibility)
