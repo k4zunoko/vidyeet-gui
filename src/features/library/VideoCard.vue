@@ -21,6 +21,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [video: VideoItem];
+  contextmenu: [event: MouseEvent, video: VideoItem];
 }>();
 
 // ホバー状態
@@ -68,6 +69,21 @@ function handleMouseEnter() {
 function handleMouseLeave() {
   isHovering.value = false;
 }
+
+/**
+ * 右クリックイベントを親に伝播
+ */
+function handleContextMenu(event: MouseEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  
+  // 再生可能な動画のみ
+  if (!props.video.playbackId) {
+    return;
+  }
+  
+  emit('contextmenu', event, props.video);
+}
 </script>
 
 <template>
@@ -89,6 +105,7 @@ function handleMouseLeave() {
     @mouseleave="handleMouseLeave"
     @focus="handleMouseEnter"
     @blur="handleMouseLeave"
+    @contextmenu="handleContextMenu"
   >
     <div class="thumbnail-container">
       <!-- サムネイル/GIF -->

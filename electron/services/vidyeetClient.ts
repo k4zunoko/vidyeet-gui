@@ -13,9 +13,18 @@ import type {
   LoginResponse,
   LogoutResponse,
   ListResponse,
+  DeleteRequest,
+  DeleteResponse,
+  SelectFileResponse,
+  UploadRequest,
+  UploadResponse,
+  UploadProgress,
   AssetItem,
 } from '../types/ipc';
 import { isIpcError } from '../types/ipc';
+import { dialog, BrowserWindow } from 'electron';
+import { spawn } from 'child_process';
+import path from 'node:path';
 
 // =============================================================================
 // CLI Response Types (internal)
@@ -44,6 +53,12 @@ interface CliLogoutResponse {
 interface CliListResponse {
   success: boolean;
   data: CliAsset[];
+}
+
+/** CLI --machine delete の応答 */
+interface CliDeleteResponse {
+  command: string;
+  success: boolean;
 }
 
 /** CLI アセット型 */
@@ -174,4 +189,169 @@ export async function getList(): Promise<ListResponse | IpcError> {
   return {
     items,
   };
+}
+
+// =============================================================================
+// Delete
+// =============================================================================
+
+/**
+ * アセットを削除
+ */
+export async function deleteAsset(request: DeleteRequest): Promise<DeleteResponse | IpcError> {
+  const result = await runCli<CliDeleteResponse>({
+    args: ['delete', request.assetId, '--force'],
+  });
+
+  if (isIpcError(result)) {
+    return result;
+  }
+
+  return {
+    success: true,
+  };
+}
+
+// =============================================================================
+// File Selection
+// =============================================================================
+
+/** 動画ファイル拡張子フィルタ */
+const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', 'm4v'];
+
+/** 前回選択したディレクトリを記憶 */
+let lastSelectedDirectory: string | undefined;
+
+/**
+ * ファイル選択ダイアログを表示
+ */
+export async function selectFile(): Promise<SelectFileResponse | IpcError> {
+  const focusedWindow = BrowserWindow.getFocusedWindow();
+
+  const result = await dialog.showOpenDialog(focusedWindow ?? undefined as any, {
+    title: 'アップロードする動画を選択',
+    defaultPath: lastSelectedDirectory,
+    filters: [
+      {
+        name: '動画ファイル',
+        extensions: VIDEO_EXTENSIONS,
+      },
+    ],
+    properties: ['openFile'],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return { filePath: null };
+  }
+
+  const filePath = result.filePaths[0];
+  // 選択したディレクトリを記憶
+  lastSelectedDirectory = path.dirname(filePath);
+
+  return { filePath };
+}
+
+// =============================================================================
+// Upload
+// =============================================================================
+
+/**
+ * CLIパスを取得（開発時はbin/、配布時はresources/bin/）
+ */
+function getCliPath(): string {
+  const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
+  if (isDev) {
+    return path.join(process.env.APP_ROOT ?? '', 'bin', 'vidyeet-cli.exe');
+  }
+  // 配布時: resources/bin/vidyeet-cli.exe
+  return path.join(process.resourcesPath, 'bin', 'vidyeet-cli.exe');
+}
+
+/**
+ * 動画をアップロード
+ * @param request アップロードリクエスト
+ * @param onProgress 進捗コールバック
+ */
+export function upload(
+  request: UploadRequest,
+  onProgress?: (progress: UploadProgress) => void
+): Promise<UploadResponse | IpcError> {
+  return new Promise((resolve) => {
+    const cliPath = getCliPath();
+    const args = ['--machine', 'upload', request.filePath, '--progress'];
+
+    const child = spawn(cliPath, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data: Buffer) => {
+      const text = data.toString();
+      stdout += text;
+
+      // 改行区切りでJSONを処理
+      const lines = text.split('\n').filter((line) => line.trim());
+      for (const line of lines) {
+        try {
+          const json = JSON.parse(line);
+
+          // 進捗通知
+          if (json.phase && onProgress) {
+            const p = json.phase;
+            onProgress({
+              phase: p.phase as UploadProgress['phase'],
+              fileName: p.file_name,
+              sizeBytes: p.size_bytes,
+              format: p.format,
+              uploadId: p.upload_id,
+              percent: p.percent,
+            });
+          }
+
+          // 成功完了
+          if (json.success === true && json.asset_id) {
+            resolve({
+              success: true,
+              assetId: json.asset_id,
+            });
+          }
+
+          // エラー完了
+          if (json.success === false && json.error) {
+            resolve({
+              code: 'CLI_NON_ZERO_EXIT',
+              message: json.error.message || 'アップロードに失敗しました',
+              details: json.error,
+            });
+          }
+        } catch {
+          // JSONパース失敗は無視（部分的なデータの可能性）
+        }
+      }
+    });
+
+    child.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (err) => {
+      resolve({
+        code: 'CLI_NOT_FOUND',
+        message: `CLIの起動に失敗しました: ${err.message}`,
+      });
+    });
+
+    child.on('close', (code) => {
+      // 正常終了（resolveはstdout処理で完了済みのはず）
+      if (code !== 0 && !stdout.includes('"success":true')) {
+        resolve({
+          code: 'CLI_NON_ZERO_EXIT',
+          message: `アップロードに失敗しました (exit code: ${code})`,
+          details: { stderr, stdout },
+        });
+      }
+    });
+  });
 }

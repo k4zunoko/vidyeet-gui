@@ -1,8 +1,8 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, clipboard } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { IpcChannels, type LoginRequest } from './types/ipc'
-import { getStatus, login, logout, getList } from './services/vidyeetClient'
+import { IpcChannels, type LoginRequest, type DeleteRequest, type UploadRequest, type UploadProgress } from './types/ipc'
+import { getStatus, login, logout, getList, deleteAsset, selectFile, upload } from './services/vidyeetClient'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -102,6 +102,38 @@ ipcMain.handle(IpcChannels.LOGOUT, async () => {
  */
 ipcMain.handle(IpcChannels.LIST, async () => {
   return await getList()
+})
+
+/**
+ * vidyeet:delete - アセットを削除
+ */
+ipcMain.handle(IpcChannels.DELETE, async (_event, request: DeleteRequest) => {
+  return await deleteAsset(request)
+})
+
+/**
+ * vidyeet:selectFile - ファイル選択ダイアログを表示
+ */
+ipcMain.handle(IpcChannels.SELECT_FILE, async () => {
+  return await selectFile()
+})
+
+/**
+ * vidyeet:upload - 動画をアップロード
+ * 進捗はイベントでRendererに送信
+ */
+ipcMain.handle(IpcChannels.UPLOAD, async (event, request: UploadRequest) => {
+  return await upload(request, (progress: UploadProgress) => {
+    // 進捗をRendererに送信
+    event.sender.send('vidyeet:uploadProgress', progress)
+  })
+})
+
+/**
+ * clipboard:write - クリップボードにテキストを書き込み
+ */
+ipcMain.handle(IpcChannels.CLIPBOARD_WRITE, (_event, text: string) => {
+  clipboard.writeText(text)
 })
 
 // =============================================================================

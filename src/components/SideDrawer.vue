@@ -26,7 +26,6 @@ function handleOverlayClick() {
 }
 
 function handleUpload() {
-  // TODO: アップロード機能実装後に有効化
   emit('upload');
 }
 
@@ -57,7 +56,6 @@ function handleLogout() {
                 <path d="M10 2L5 7h3v6h4V7h3l-5-5zM3 16v2h14v-2H3z"/>
               </svg>
               <span>アップロード</span>
-              <span class="coming-soon">準備中</span>
             </button>
           </div>
 
@@ -146,16 +144,6 @@ function handleLogout() {
 .drawer-button.logout:hover {
   border-color: var(--color-error);
   color: var(--color-error);
-}
-
-.coming-soon {
-  margin-left: auto;
-  padding: 0.125rem 0.5rem;
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  background: var(--color-surface-dark);
-  border-radius: 4px;
 }
 
 /* Transitions */

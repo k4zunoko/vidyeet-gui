@@ -18,6 +18,8 @@ defineProps<{
 const emit = defineEmits<{
   /** 動画選択時 */
   select: [video: VideoItem];
+  /** コンテキストメニュー表示要求 */
+  contextmenu: [event: MouseEvent, video: VideoItem];
 }>();
 
 // 動画一覧
@@ -69,6 +71,20 @@ function handleSelect(video: VideoItem) {
 }
 
 /**
+ * コンテキストメニュー要求を親に伝播
+ */
+function handleContextMenu(event: MouseEvent, video: VideoItem) {
+  emit('contextmenu', event, video);
+}
+
+/**
+ * 動画を一覧から削除（外部から呼び出し可能）
+ */
+function removeVideo(assetId: string) {
+  videos.value = videos.value.filter((v) => v.assetId !== assetId);
+}
+
+/**
  * 再読み込み（外部から呼び出し可能）
  */
 function reload() {
@@ -76,7 +92,7 @@ function reload() {
 }
 
 // 外部から呼び出せるように公開
-defineExpose({ reload });
+defineExpose({ reload, removeVideo });
 
 onMounted(() => {
   fetchVideos();
@@ -118,6 +134,7 @@ onMounted(() => {
           :video="video"
           :is-selected="selectedVideo?.assetId === video.assetId"
           @select="handleSelect"
+          @contextmenu="handleContextMenu"
         />
       </div>
     </main>

@@ -3,11 +3,18 @@ import {
   IpcChannels,
   type VidyeetApi,
   type WindowApi,
+  type ClipboardApi,
   type LoginRequest,
+  type DeleteRequest,
+  type UploadRequest,
   type StatusResponse,
   type LoginResponse,
   type LogoutResponse,
   type ListResponse,
+  type DeleteResponse,
+  type SelectFileResponse,
+  type UploadResponse,
+  type UploadProgress,
   type IpcError,
 } from './types/ipc'
 
@@ -35,9 +42,55 @@ const vidyeetApi: VidyeetApi = {
   async list(): Promise<ListResponse | IpcError> {
     return await ipcRenderer.invoke(IpcChannels.LIST)
   },
+
+  async delete(request: DeleteRequest): Promise<DeleteResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.DELETE, request)
+  },
+
+  async selectFile(): Promise<SelectFileResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.SELECT_FILE)
+  },
+
+  async upload(
+    request: UploadRequest,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<UploadResponse | IpcError> {
+    // 進捗リスナーを登録
+    const progressListener = (_event: Electron.IpcRendererEvent, progress: UploadProgress) => {
+      onProgress?.(progress)
+    }
+    
+    if (onProgress) {
+      ipcRenderer.on('vidyeet:uploadProgress', progressListener)
+    }
+
+    try {
+      return await ipcRenderer.invoke(IpcChannels.UPLOAD, request)
+    } finally {
+      // リスナーをクリーンアップ
+      if (onProgress) {
+        ipcRenderer.off('vidyeet:uploadProgress', progressListener)
+      }
+    }
+  },
 }
 
 contextBridge.exposeInMainWorld('vidyeet', vidyeetApi)
+
+// =============================================================================
+// Clipboard API
+// =============================================================================
+
+/**
+ * クリップボードAPI - window.clipboard として公開
+ */
+const clipboardApi: ClipboardApi = {
+  async writeText(text: string): Promise<void> {
+    return await ipcRenderer.invoke(IpcChannels.CLIPBOARD_WRITE, text)
+  },
+}
+
+contextBridge.exposeInMainWorld('clipboard', clipboardApi)
 
 // =============================================================================
 // Window Control API
