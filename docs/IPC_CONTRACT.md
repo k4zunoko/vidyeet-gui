@@ -17,7 +17,7 @@ Renderer（Vue）から Main（Electron）へ要求する操作を IPC として
   - response: `{ isAuthenticated: boolean }`
 
 - `vidyeet:login`
-  - request: `{ accessToken: string; tokenPassword: string }`
+  - request: `{ tokenId: string; tokenSecret: string }`
   - response: `{ success: true }` またはエラー
 
 - `vidyeet:logout`
@@ -28,7 +28,7 @@ Renderer（Vue）から Main（Electron）へ要求する操作を IPC として
 
 - `vidyeet:list`
   - request: なし
-  - response: `{ items: Array<{ assetId: string; playbackId: string }> }`
+  - response: `{ items: Array<{ assetId: string; playbackId: string | null }> }`
 
 将来:
 

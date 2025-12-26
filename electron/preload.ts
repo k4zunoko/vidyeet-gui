@@ -1,5 +1,59 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import {
+  IpcChannels,
+  type VidyeetApi,
+  type LoginRequest,
+  type StatusResponse,
+  type LoginResponse,
+  type LogoutResponse,
+  type ListResponse,
+  type IpcError,
+} from './types/ipc'
 
+// =============================================================================
+// Vidyeet API (High-level)
+// =============================================================================
+
+/**
+ * 高水準API - window.vidyeet として公開
+ * Renderer は IPC チャネル名を知らずに済む
+ */
+const vidyeetApi: VidyeetApi = {
+  async status(): Promise<StatusResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.STATUS)
+  },
+
+  async login(request: LoginRequest): Promise<LoginResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.LOGIN, request)
+  },
+
+  async logout(): Promise<LogoutResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.LOGOUT)
+  },
+
+  async list(): Promise<ListResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.LIST)
+  },
+}
+
+contextBridge.exposeInMainWorld('vidyeet', vidyeetApi)
+
+// =============================================================================
+// Legacy ipcRenderer API (for backward compatibility)
+// =============================================================================
+
+/**
+ * @deprecated 後方互換のために残しているが、新規コードでは使用禁止
+ *
+ * Renderer は高水準API（window.vidyeet）を使用すること。
+ * この API は段階的に廃止予定：
+ * 1. 新規機能では window.vidyeet のみ使用
+ * 2. 既存の window.ipcRenderer 使用箇所を window.vidyeet に移行
+ * 3. 移行完了後、この公開を削除
+ *
+ * @see docs/ARCHITECTURE.md - Preload の責務
+ * @see docs/IPC_CONTRACT.md - 原則
+ */
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {
   on(...args: Parameters<typeof ipcRenderer.on>) {

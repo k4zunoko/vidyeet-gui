@@ -11,6 +11,14 @@
     "dist",
     "dist-electron"
   ],
+  // CLI実行ファイルを同梱（process.resourcesPath/bin/ に配置される）
+  "extraResources": [
+    {
+      "from": "bin",
+      "to": "bin",
+      "filter": ["**/*"]
+    }
+  ],
   "mac": {
     "target": [
       "dmg"

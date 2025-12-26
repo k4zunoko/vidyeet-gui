@@ -28,6 +28,9 @@ dist-electron
 .env
 .env.*
 
+# electron-builder output
+release/
+
 # Temp files created during CLI verification
 tmp-*.json
 tmp-*.txt

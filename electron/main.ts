@@ -1,9 +1,9 @@
-import { app, BrowserWindow } from 'electron'
-import { createRequire } from 'node:module'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { IpcChannels, type LoginRequest } from './types/ipc'
+import { getStatus, login, logout, getList } from './services/vidyeetClient'
 
-const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // The built directory structure
@@ -27,8 +27,11 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win: BrowserWindow | null
 
 function createWindow() {
+  // VITE_PUBLIC は上で必ず設定されるが、型安全のためフォールバックを設定
+  const publicDir = process.env.VITE_PUBLIC ?? RENDERER_DIST
+
   win = new BrowserWindow({
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(publicDir, 'electron-vite.svg'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -66,3 +69,35 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(createWindow)
+
+// =============================================================================
+// IPC Handlers
+// =============================================================================
+
+/**
+ * vidyeet:status - 認証状態を取得
+ */
+ipcMain.handle(IpcChannels.STATUS, async () => {
+  return await getStatus()
+})
+
+/**
+ * vidyeet:login - ログイン
+ */
+ipcMain.handle(IpcChannels.LOGIN, async (_event, request: LoginRequest) => {
+  return await login(request)
+})
+
+/**
+ * vidyeet:logout - ログアウト
+ */
+ipcMain.handle(IpcChannels.LOGOUT, async () => {
+  return await logout()
+})
+
+/**
+ * vidyeet:list - アセット一覧を取得
+ */
+ipcMain.handle(IpcChannels.LIST, async () => {
+  return await getList()
+})
