@@ -153,7 +153,6 @@ function handleMouseLeave() {
 /* ホバー状態 - Micro-interaction */
 .video-card:hover:not(.is-disabled),
 .video-card:focus-visible:not(.is-disabled) {
-  transform: scale(1.02);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   border-color: var(--color-surface-hover);
 }

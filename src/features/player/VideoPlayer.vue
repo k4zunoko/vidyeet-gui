@@ -155,24 +155,40 @@ onUnmounted(() => {
   <div class="player-container">
     <!-- 未選択状態 -->
     <div v-if="!video" class="player-empty">
-      <p class="empty-message">動画を選択してください</p>
+      <div class="empty-content">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9.5 12l4.5 3V9z"/>
+        </svg>
+        <p class="empty-message">動画を選択してください</p>
+        <p class="empty-hint">左の一覧から動画をクリック</p>
+      </div>
     </div>
 
     <!-- プレイヤー本体 -->
     <div v-else class="player-wrapper">
       <!-- ローディング -->
-      <div v-if="playerState === 'loading'" class="player-overlay">
-        <div class="loading-spinner"></div>
-        <p class="loading-text">読み込み中...</p>
-      </div>
+      <Transition name="fade">
+        <div v-if="playerState === 'loading'" class="player-overlay">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">読み込み中...</p>
+        </div>
+      </Transition>
 
       <!-- エラー -->
-      <div v-if="playerState === 'error'" class="player-overlay error">
-        <p class="error-message">{{ errorMessage }}</p>
-        <button class="retry-button" @click="handleRetry">
-          再試行
-        </button>
-      </div>
+      <Transition name="fade">
+        <div v-if="playerState === 'error'" class="player-overlay error">
+          <svg class="error-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+          </svg>
+          <p class="error-message">{{ errorMessage }}</p>
+          <button class="retry-button" @click="handleRetry">
+            <svg class="button-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+            </svg>
+            再試行
+          </button>
+        </div>
+      </Transition>
 
       <!-- Video要素 -->
       <video
@@ -190,9 +206,14 @@ onUnmounted(() => {
 <style scoped>
 .player-container {
   width: 100%;
+  max-width: 100%;
   background: #000;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
+  /* シャドウで浮遂感を演出 */
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -1px rgba(0, 0, 0, 0.2);
 }
 
 .player-empty {
@@ -200,24 +221,56 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   aspect-ratio: 16 / 9;
-  background: var(--color-surface-dark);
+  background: linear-gradient(145deg, var(--color-surface-dark), var(--color-surface));
+}
+
+.empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-text-muted);
+  opacity: 0.4;
 }
 
 .empty-message {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
+  font-weight: 500;
   color: var(--color-text-muted);
+}
+
+.empty-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
 .player-wrapper {
   position: relative;
   aspect-ratio: 16 / 9;
+  background: #000;
 }
 
 .video-element {
   width: 100%;
   height: 100%;
   background: #000;
+  /* ビデオコントロールのカスタマイズ */
+  border-radius: 0;
+}
+
+/* ビデオコントロールのスタイリング（Chromium系） */
+.video-element::-webkit-media-controls-panel {
+  background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%);
 }
 
 .player-overlay {
@@ -228,7 +281,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   z-index: 10;
 }
 
@@ -236,13 +290,24 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.9);
 }
 
+/* フェードトランジション */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--color-surface);
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
   border-top-color: var(--color-primary);
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
@@ -253,29 +318,56 @@ onUnmounted(() => {
   margin: 0;
   font-size: 0.875rem;
   color: var(--color-text-muted);
+  letter-spacing: 0.025em;
+}
+
+.error-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--color-error);
+  opacity: 0.9;
 }
 
 .error-message {
   margin: 0;
   font-size: 0.875rem;
-  color: var(--color-error);
+  color: var(--color-text-muted);
   text-align: center;
-  padding: 0 1rem;
+  padding: 0 1.5rem;
+  max-width: 300px;
+  line-height: 1.5;
 }
 
 .retry-button {
-  padding: 0.5rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: white;
   background: var(--color-primary);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
 }
 
 .retry-button:hover {
   background: var(--color-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(250, 80, 181, 0.4);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+.button-icon {
+  width: 18px;
+  height: 18px;
 }
 </style>
