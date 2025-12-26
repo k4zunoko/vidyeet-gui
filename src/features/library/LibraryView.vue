@@ -145,8 +145,8 @@ onMounted(() => {
 
 .loading-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
 }
 
 .skeleton-card {
@@ -224,7 +224,7 @@ onMounted(() => {
 /* 動画グリッド */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
 }
 </style>
