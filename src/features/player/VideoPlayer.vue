@@ -118,12 +118,13 @@ function handleRetry() {
 // 動画切り替えを監視
 watch(
   () => props.video,
-  (newVideo, oldVideo) => {
-    // 初回マウント時はonMountedで処理するためスキップ
-    if (oldVideo === undefined) return;
-    
+  async (newVideo) => {
     if (newVideo?.playbackId) {
-      initPlayer(newVideo.playbackId);
+      // v-if による DOM 更新を待ってから初期化
+      await nextTick();
+      if (videoRef.value) {
+        initPlayer(newVideo.playbackId);
+      }
     } else {
       destroyPlayer();
     }
@@ -141,12 +142,8 @@ function handlePause() {
   }
 }
 
-onMounted(async () => {
-  // DOMが確実にマウントされてからプレイヤーを初期化
-  await nextTick();
-  if (props.video?.playbackId && videoRef.value) {
-    initPlayer(props.video.playbackId);
-  }
+onMounted(() => {
+  // 初期化はwatchで行う（props.videoが変更されたときに発火）
 });
 
 onUnmounted(() => {

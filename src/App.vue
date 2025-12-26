@@ -226,9 +226,9 @@ onMounted(() => {
 }
 
 .sidebar {
-  width: 320px;
-  min-width: 240px;
-  max-width: 50%;
+  width: 180px;
+  min-width: 140px;
+  max-width: 240px;
   height: 100%;
   border-right: 1px solid var(--color-border);
   overflow: hidden;

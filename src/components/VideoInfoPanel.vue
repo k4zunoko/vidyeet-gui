@@ -62,19 +62,12 @@ const infoItems = computed(() => {
 
 <template>
   <div class="info-panel">
-    <template v-if="video">
-      <div class="info-grid">
-        <div v-for="item in infoItems" :key="item.label" class="info-item">
-          <span class="info-label">{{ item.label }}</span>
-          <span class="info-value">{{ item.value }}</span>
-        </div>
+    <div v-if="video" class="info-grid">
+      <div v-for="item in infoItems" :key="item.label" class="info-item">
+        <span class="info-label">{{ item.label }}</span>
+        <span class="info-value">{{ item.value }}</span>
       </div>
-    </template>
-    <template v-else>
-      <div class="empty-state">
-        <span class="empty-text">動画を選択してください</span>
-      </div>
-    </template>
+    </div>
   </div>
 </template>
 
@@ -107,17 +100,5 @@ const infoItems = computed(() => {
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--color-text);
-}
-
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.empty-text {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
 }
 </style>
