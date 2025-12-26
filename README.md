@@ -1,11 +1,21 @@
 # vidyeet-gui
 
-Mux Video を操作する CLI（`bin/vidyeet-cli.exe`）をラップし、動画の一覧表示・プレビュー再生をGUIで行う Windows 専用デスクトップアプリです。
+Mux Video を操作する CLI（`bin/vidyeet-cli.exe`）をラップし、動画管理をGUIで行う Windows 専用デスクトップアプリです。
+
 ## 目的（現時点）
 
 - 起動時に認証状態を確認（CLI: `--machine status`）
 - 動画一覧を取得してサムネイル表示（CLI: `--machine list`）
 - `playback_id` から GIF/サムネイル/HLS を生成してプレビュー
+
+現実装に含まれる機能:
+
+- アップロード（ファイル選択 + 進捗表示）
+- 右クリックメニュー
+	- MP4リンクのコピー
+	- 削除（確認ダイアログあり）
+- ログアウト
+- フレームレスウィンドウ（カスタムタイトルバー）
 
 ## ドキュメント
 設計・実装方針は docs に集約しています。

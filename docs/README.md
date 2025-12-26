@@ -5,7 +5,7 @@
 ## まず読む
 
 - [DESIGN_PHILOSOPHY.md](./DESIGN_PHILOSOPHY.md): 設計原則・責務分離・全体方針
-- [REQUIREMENTS.md](./REQUIREMENTS.md): 現スコープの要求仕様（機能/非機能）
+- [REQUIREMENTS.md](./REQUIREMENTS.md): 現スコープ（現実装）の要求仕様（機能/非機能）
 - [UI_SPEC.md](./UI_SPEC.md): 画面・状態遷移・ユーザー操作
 
 ## UI/UX

@@ -18,6 +18,15 @@
 - 動画一覧取得（`--machine list`）
 - サムネイル一覧表示（ホバーでGIF、選択でHLS再生）
 
+現実装に含まれる拡張:
+
+- ログアウト（`--machine logout`）
+- 右クリックメニュー
+	- MP4リンクコピー（`playback_id` から生成）
+	- 削除（`--machine delete <asset_id> --force`、確認ダイアログ必須）
+- アップロード（`--machine upload <file> --progress`、進捗表示 + 完了後リロード）
+- フレームレスウィンドウ（カスタムタイトルバー + window control API）
+
 将来拡張の候補は [ROADMAP.md](./ROADMAP.md) に切り出します。
 
 ## 非目標（現時点でやらない）
@@ -25,6 +34,10 @@
 - Mux API をGUI側で直接叩く（CLIが責務を持つ）
 - 認証情報の保存方式をGUIが管理する（CLIが担保する）
 - クロスプラットフォーム対応（Windows専用）
+
+補足:
+
+- `show` による詳細取得・URLコピー拡張（HLS/サムネ等）は将来対応
 
 ## 設計原則
 
@@ -67,7 +80,7 @@
 	- `contextBridge` で安全な API を公開（低レベル IPC は隠蔽）
 
 - Main process
-	- CLI プロセス起動、stdout JSON のパース、タイムアウト、キャンセル
+	- CLI プロセス起動、stdout JSON のパース、タイムアウト（明示的なキャンセル操作は未実装）
 	- 画面が必要とする形へ整形して返す（ただし“業務ロジック”は増やしすぎない）
 
 この境界の具体は [ARCHITECTURE.md](./ARCHITECTURE.md) と [IPC_CONTRACT.md](./IPC_CONTRACT.md)。

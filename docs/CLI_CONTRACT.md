@@ -53,6 +53,45 @@ GUIは以下を前提にする:
 - `data` が配列でない場合は契約違反として扱い、エラー表示
 - `playback_ids` が空の場合、そのassetは「再生不可」として表示（or 非表示）
 
+## `--machine delete <asset_id> --force`
+
+- GUIは安全側に倒し、現状は常に `--force` を付与して削除を実行する
+- 破壊的操作のため、GUI側で確認ダイアログを必須にする
+
+### 成功時JSON（想定）
+
+- `success: true`
+
+### 失敗時JSON（想定）
+
+- `success: false`
+- `error: { message: string; exit_code: number; hint?: string }`
+
+## `--machine upload <file> --progress`
+
+アップロードは進捗を逐次出すため、stdout は「改行区切りの JSON ストリーム」になる。
+
+GUI側の前提（現実装）:
+
+- stdout は 1行 = 1JSON とは限らないが、概ね改行区切りで進捗/完了が流れる
+- JSONとしてパースできない断片は無視して良い（部分的なバッファ分割の可能性）
+
+### 進捗行JSON（現実装が参照する形）
+
+- `phase: { phase: string; file_name?: string; size_bytes?: number; format?: string; upload_id?: string; percent?: number }`
+
+GUIは `phase.phase` を表示用の状態として扱い、必要なら `percent` を進捗として扱える。
+
+### 完了行JSON（現実装が参照する形）
+
+- `success: true`
+- `asset_id: string`
+
+### 失敗行JSON（現実装が参照する形）
+
+- `success: false`
+- `error: { message?: string; ... }`
+
 ## 失敗時の扱い
 
 GUI側（Main）が扱うエラー源:
