@@ -11,6 +11,7 @@ import type { AppScreen, VideoItem } from './types/app';
 import { isIpcError } from '../electron/types/ipc';
 import TitleBar from './components/TitleBar.vue';
 import SideDrawer from './components/SideDrawer.vue';
+import VideoInfoPanel from './components/VideoInfoPanel.vue';
 import LoginView from './features/auth/LoginView.vue';
 import LibraryView from './features/library/LibraryView.vue';
 import VideoPlayer from './features/player/VideoPlayer.vue';
@@ -149,10 +150,13 @@ onMounted(() => {
           />
         </aside>
 
-        <!-- メインエリア: プレイヤー -->
-        <main class="main-content">
-          <VideoPlayer :video="selectedVideo" />
-        </main>
+        <!-- メインエリア: プレイヤー + 情報パネル -->
+        <div class="main-area">
+          <main class="main-content">
+            <VideoPlayer :video="selectedVideo" />
+          </main>
+          <VideoInfoPanel :video="selectedVideo" />
+        </div>
       </div>
 
       <!-- ドロワー -->
@@ -222,11 +226,18 @@ onMounted(() => {
 }
 
 .sidebar {
-  width: 360px;
-  min-width: 280px;
+  width: 320px;
+  min-width: 240px;
   max-width: 50%;
   height: 100%;
   border-right: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 

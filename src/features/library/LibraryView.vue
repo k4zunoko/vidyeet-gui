@@ -47,6 +47,12 @@ async function fetchVideos() {
     videos.value = result.items.map((item) => ({
       assetId: item.assetId,
       playbackId: item.playbackId,
+      duration: item.duration,
+      status: item.status,
+      resolutionTier: item.resolutionTier,
+      aspectRatio: item.aspectRatio,
+      maxFrameRate: item.maxFrameRate,
+      createdAt: item.createdAt,
     }));
   } catch (err) {
     errorMessage.value = '予期しないエラーが発生しました。';
@@ -139,8 +145,8 @@ onMounted(() => {
 
 .loading-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 0.5rem;
 }
 
 .skeleton-card {
@@ -218,7 +224,7 @@ onMounted(() => {
 /* 動画グリッド */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 0.5rem;
 }
 </style>

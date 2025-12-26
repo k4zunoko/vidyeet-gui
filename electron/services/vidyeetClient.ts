@@ -50,6 +50,12 @@ interface CliListResponse {
 interface CliAsset {
   id: string;
   playback_ids?: Array<{ id: string; policy?: string }>;
+  duration?: number;
+  status?: string;
+  resolution_tier?: string;
+  aspect_ratio?: string;
+  max_stored_frame_rate?: number;
+  created_at?: string;
 }
 
 // =============================================================================
@@ -156,6 +162,13 @@ export async function getList(): Promise<ListResponse | IpcError> {
     assetId: asset.id,
     // playback_ids の先頭の id を取得、なければ null
     playbackId: asset.playback_ids?.[0]?.id ?? null,
+    // 詳細情報
+    duration: asset.duration,
+    status: asset.status,
+    resolutionTier: asset.resolution_tier,
+    aspectRatio: asset.aspect_ratio,
+    maxFrameRate: asset.max_stored_frame_rate,
+    createdAt: asset.created_at,
   }));
 
   return {

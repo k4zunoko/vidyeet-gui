@@ -5,7 +5,7 @@
  * HLS.js を使用して動画を再生
  * @see docs/UI_SPEC.md - 再生（Player）
  */
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import Hls from 'hls.js';
 import type { VideoItem } from '../../types/app';
 import { getHlsUrl } from '../../utils/muxUrls';
@@ -118,14 +118,16 @@ function handleRetry() {
 // 動画切り替えを監視
 watch(
   () => props.video,
-  (newVideo) => {
+  (newVideo, oldVideo) => {
+    // 初回マウント時はonMountedで処理するためスキップ
+    if (oldVideo === undefined) return;
+    
     if (newVideo?.playbackId) {
       initPlayer(newVideo.playbackId);
     } else {
       destroyPlayer();
     }
-  },
-  { immediate: true }
+  }
 );
 
 // 再生状態を監視
@@ -139,8 +141,10 @@ function handlePause() {
   }
 }
 
-onMounted(() => {
-  if (props.video?.playbackId) {
+onMounted(async () => {
+  // DOMが確実にマウントされてからプレイヤーを初期化
+  await nextTick();
+  if (props.video?.playbackId && videoRef.value) {
     initPlayer(props.video.playbackId);
   }
 });

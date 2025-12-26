@@ -9,6 +9,18 @@ export type AppScreen = 'initializing' | 'login' | 'library';
 export interface VideoItem {
   assetId: string;
   playbackId: string | null;
+  /** 動画の長さ（秒） */
+  duration?: number;
+  /** 動画ステータス */
+  status?: string;
+  /** 解像度 (例: "1080p") */
+  resolutionTier?: string;
+  /** アスペクト比 (例: "16:9") */
+  aspectRatio?: string;
+  /** 最大フレームレート */
+  maxFrameRate?: number;
+  /** 作成日時 (Unix timestamp文字列) */
+  createdAt?: string;
 }
 
 /** アプリケーション全体の状態 */
