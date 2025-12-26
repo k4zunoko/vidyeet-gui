@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "hls.js": "^1.6.15",
     "vue": "^3.4.21"
   },
   "devDependencies": {

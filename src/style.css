@@ -1,79 +1,146 @@
+/**
+ * Vidyeet Global Styles
+ *
+ * CSS変数でテーマを定義し、各コンポーネントで使用
+ */
+
+/* =============================================================================
+   CSS Variables (Dark Theme)
+   ============================================================================= */
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Colors - Background */
+  --color-bg: #1a1a1a;
+  --color-surface: #242424;
+  --color-surface-dark: #1e1e1e;
+  --color-surface-hover: #2a2a2a;
+
+  /* Colors - Text */
+  --color-text: rgba(255, 255, 255, 0.92);
+  --color-text-muted: rgba(255, 255, 255, 0.5);
+
+  /* Colors - Primary (Mux Pink) */
+  --color-primary: #fa50b5;
+  --color-primary-hover: #ff6bc6;
+  --color-primary-alpha: rgba(250, 80, 181, 0.25);
+
+  /* Colors - Semantic */
+  --color-error: #ff6b6b;
+  --color-error-bg: rgba(255, 107, 107, 0.15);
+  --color-success: #51cf66;
+
+  /* Colors - Border */
+  --color-border: rgba(255, 255, 255, 0.1);
+
+  /* Colors - Input */
+  --color-input-bg: #1e1e1e;
+
+  /* Typography */
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  /* Rendering */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Color scheme */
+  color-scheme: dark;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* =============================================================================
+   Reset & Base
+   ============================================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* =============================================================================
+   Links
+   ============================================================================= */
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s;
 }
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+/* =============================================================================
+   Buttons (Base)
+   ============================================================================= */
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  font-size: inherit;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
 }
 
-.card {
-  padding: 2em;
+button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
+
+/* =============================================================================
+   Inputs (Base)
+   ============================================================================= */
+
+input {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input:focus-visible {
+  outline: none;
+}
+
+/* =============================================================================
+   Scrollbar (Dark Theme)
+   ============================================================================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* =============================================================================
+   App Container
+   ============================================================================= */
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  height: 100%;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
