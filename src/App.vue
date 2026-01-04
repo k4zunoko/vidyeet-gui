@@ -327,16 +327,6 @@ async function confirmDelete() {
   }
 }
 
-/**
- * プレイヤーエリアで右クリック
- */
-function handlePlayerContextMenu(event: MouseEvent) {
-  if (selectedVideo.value?.playbackId) {
-    event.preventDefault();
-    showContextMenu(event, selectedVideo.value);
-  }
-}
-
 onMounted(() => {
   checkAuth();
 });
@@ -382,8 +372,8 @@ onMounted(() => {
 
         <!-- メインエリア: プレイヤー + 情報パネル -->
         <div class="main-area">
-          <main class="main-content" @contextmenu="handlePlayerContextMenu">
-            <VideoPlayer :video="selectedVideo" />
+          <main class="main-content">
+            <VideoPlayer :video="selectedVideo" @contextmenu="showContextMenu" />
           </main>
           <VideoInfoPanel :video="selectedVideo" />
         </div>

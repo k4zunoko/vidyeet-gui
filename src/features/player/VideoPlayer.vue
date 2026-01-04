@@ -14,6 +14,11 @@ const props = defineProps<{
   video: VideoItem | null;
 }>();
 
+const emit = defineEmits<{
+  /** 右クリックメニュー表示要求 */
+  contextmenu: [event: MouseEvent, video: VideoItem];
+}>();
+
 // video要素への参照
 const videoRef = ref<HTMLVideoElement | null>(null);
 
@@ -142,6 +147,16 @@ function handlePause() {
   }
 }
 
+/**
+ * 動画要素で右クリック
+ */
+function handleContextMenu(event: MouseEvent) {
+  if (props.video?.playbackId) {
+    event.preventDefault();
+    emit('contextmenu', event, props.video);
+  }
+}
+
 onMounted(() => {
   // 初期化はwatchで行う（props.videoが変更されたときに発火）
 });
@@ -198,6 +213,7 @@ onUnmounted(() => {
         playsinline
         @play="handlePlay"
         @pause="handlePause"
+        @contextmenu="handleContextMenu"
       ></video>
     </div>
   </div>
