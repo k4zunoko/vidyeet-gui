@@ -8,13 +8,14 @@
  * @see docs/UI_SPEC.md - 起動時状態遷移
  */
 import { ref, onMounted } from 'vue';
-import type { AppScreen, VideoItem } from './types/app';
+import type { AppScreen, VideoItem, ToastItem, ToastType } from './types/app';
 import type { UploadProgress } from '../electron/types/ipc';
 import { isIpcError } from '../electron/types/ipc';
 import TitleBar from './components/TitleBar.vue';
 import SideDrawer from './components/SideDrawer.vue';
 import VideoInfoPanel from './components/VideoInfoPanel.vue';
 import VideoContextMenu from './components/VideoContextMenu.vue';
+import ToastNotification from './components/ToastNotification.vue';
 import LoginView from './features/auth/LoginView.vue';
 import LibraryView from './features/library/LibraryView.vue';
 import VideoPlayer from './features/player/VideoPlayer.vue';
@@ -53,6 +54,50 @@ const deleteDialogState = ref({
   isDeleting: false,
   errorMessage: null as string | null,
 });
+
+// =============================================================================
+// トースト通知状態
+// =============================================================================
+const toasts = ref<ToastItem[]>([]);
+let toastIdCounter = 0;
+
+/**
+ * トースト通知を表示
+ * @param type - 通知タイプ
+ * @param message - 表示メッセージ
+ * @param duration - 自動消去までの時間（ミリ秒）。デフォルトは成功3秒、エラー5秒
+ */
+function showToast(type: ToastType, message: string, duration?: number) {
+  const defaultDuration = type === 'error' ? 5000 : 3000;
+  const id = ++toastIdCounter;
+  const toast: ToastItem = {
+    id,
+    type,
+    message,
+    duration: duration ?? defaultDuration,
+  };
+
+  // 最大3件まで保持（古いものを削除）
+  if (toasts.value.length >= 3) {
+    toasts.value.shift();
+  }
+  toasts.value.push(toast);
+
+  // 自動消去タイマー
+  setTimeout(() => {
+    removeToast(id);
+  }, toast.duration);
+}
+
+/**
+ * トーストを削除
+ */
+function removeToast(id: number) {
+  const index = toasts.value.findIndex((t) => t.id === id);
+  if (index !== -1) {
+    toasts.value.splice(index, 1);
+  }
+}
 
 // =============================================================================
 // アップロードダイアログ状態
@@ -231,6 +276,8 @@ async function handleUpload() {
   // 少し待ってからダイアログを閉じる
   setTimeout(() => {
     uploadDialogState.value.isOpen = false;
+    // トースト通知を表示
+    showToast('success', 'アップロードが完了しました');
   }, 1500);
 }
 
@@ -320,6 +367,9 @@ async function confirmDelete() {
     // ダイアログを閉じる
     deleteDialogState.value.isOpen = false;
     deleteDialogState.value.video = null;
+
+    // トースト通知を表示
+    showToast('success', '動画を削除しました');
   } catch (err) {
     deleteDialogState.value.errorMessage = '削除中にエラーが発生しました。';
   } finally {
@@ -395,6 +445,7 @@ onMounted(() => {
         :y="contextMenuState.y"
         @close="closeContextMenu"
         @delete="handleDeleteRequest"
+        @copy-success="() => showToast('success', 'リンクをコピーしました')"
       />
 
       <!-- 削除確認ダイアログ -->
@@ -477,6 +528,12 @@ onMounted(() => {
           </div>
         </Transition>
       </Teleport>
+
+      <!-- トースト通知 -->
+      <ToastNotification
+        :toasts="toasts"
+        @close="removeToast"
+      />
     </div>
   </div>
 </template>

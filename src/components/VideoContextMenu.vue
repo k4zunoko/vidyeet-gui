@@ -32,6 +32,8 @@ const emit = defineEmits<{
   close: [];
   /** 削除を要求 */
   delete: [video: VideoItem];
+  /** コピー成功 */
+  copySuccess: [];
 }>();
 
 // コンテキストメニューの参照
@@ -45,6 +47,7 @@ async function handleCopyLink() {
 
   const mp4Url = getMp4Url(props.video.playbackId);
   await window.clipboard.writeText(mp4Url);
+  emit('copySuccess');
   emit('close');
 }
 

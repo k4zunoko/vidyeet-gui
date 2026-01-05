@@ -44,3 +44,22 @@ export interface AppError {
   message: string;
   action?: 'retry' | 'login';
 }
+
+// =============================================================================
+// トースト通知
+// =============================================================================
+
+/** トースト通知のタイプ */
+export type ToastType = 'success' | 'error' | 'info';
+
+/** トースト通知アイテム */
+export interface ToastItem {
+  /** 一意なID */
+  id: number;
+  /** 通知タイプ */
+  type: ToastType;
+  /** 表示メッセージ */
+  message: string;
+  /** 自動消去までの時間（ミリ秒） */
+  duration: number;
+}
