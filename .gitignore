@@ -36,3 +36,4 @@ tmp-*.json
 tmp-*.txt
 
 source.mp4
+package-lock.json
