@@ -27,6 +27,10 @@
 
 - [ROADMAP.md](./ROADMAP.md): 機能追加の順序と判断基準
 
+## 移行ガイド
+
+- [migration/CLI_UPLOAD_PROGRESS_FORMAT.md](./migration/CLI_UPLOAD_PROGRESS_FORMAT.md): CLI upload進捗JSON形式の修正に伴う変更ガイド
+
 ## 更新ルール
 
 - 実装を変えたら、影響する doc も同じPRで更新する

@@ -5,7 +5,7 @@
  * @see docs/CLI_CONTRACT.md
  */
 
-import { runCli } from './cliRunner';
+import { runCli } from "./cliRunner";
 import type {
   IpcError,
   StatusResponse,
@@ -20,11 +20,11 @@ import type {
   UploadResponse,
   UploadProgress,
   AssetItem,
-} from '../types/ipc';
-import { isIpcError } from '../types/ipc';
-import { dialog, BrowserWindow } from 'electron';
-import { spawn } from 'child_process';
-import path from 'node:path';
+} from "../types/ipc";
+import { isIpcError } from "../types/ipc";
+import { dialog, BrowserWindow } from "electron";
+import { spawn } from "child_process";
+import path from "node:path";
 
 // =============================================================================
 // CLI Response Types (internal)
@@ -82,7 +82,7 @@ interface CliAsset {
  */
 export async function getStatus(): Promise<StatusResponse | IpcError> {
   const result = await runCli<CliStatusResponse>({
-    args: ['status'],
+    args: ["status"],
   });
 
   if (isIpcError(result)) {
@@ -92,7 +92,8 @@ export async function getStatus(): Promise<StatusResponse | IpcError> {
   const data = result.data;
 
   // 認証判定: success === true かつ is_authenticated === true
-  const isAuthenticated = data.success === true && data.is_authenticated === true;
+  const isAuthenticated =
+    data.success === true && data.is_authenticated === true;
 
   return {
     isAuthenticated,
@@ -106,12 +107,14 @@ export async function getStatus(): Promise<StatusResponse | IpcError> {
 /**
  * ログイン（認証情報を標準入力で渡す）
  */
-export async function login(request: LoginRequest): Promise<LoginResponse | IpcError> {
+export async function login(
+  request: LoginRequest,
+): Promise<LoginResponse | IpcError> {
   // 標準入力: 1行目 = Token ID / 2行目 = Token Secret
   const stdin = `${request.tokenId}\n${request.tokenSecret}`;
 
   const result = await runCli<CliLoginResponse>({
-    args: ['login', '--stdin'],
+    args: ["login", "--stdin"],
     stdin,
   });
 
@@ -133,7 +136,7 @@ export async function login(request: LoginRequest): Promise<LoginResponse | IpcE
  */
 export async function logout(): Promise<LogoutResponse | IpcError> {
   const result = await runCli<CliLogoutResponse>({
-    args: ['logout'],
+    args: ["logout"],
   });
 
   if (isIpcError(result)) {
@@ -154,7 +157,7 @@ export async function logout(): Promise<LogoutResponse | IpcError> {
  */
 export async function getList(): Promise<ListResponse | IpcError> {
   const result = await runCli<CliListResponse>({
-    args: ['list'],
+    args: ["list"],
   });
 
   if (isIpcError(result)) {
@@ -166,8 +169,8 @@ export async function getList(): Promise<ListResponse | IpcError> {
   // data.data が配列でない場合は契約違反
   if (!Array.isArray(data.data)) {
     return {
-      code: 'CLI_BAD_JSON',
-      message: 'CLI list の data が配列ではありません',
+      code: "CLI_BAD_JSON",
+      message: "CLI list の data が配列ではありません",
       details: { received: typeof data.data },
     };
   }
@@ -198,9 +201,11 @@ export async function getList(): Promise<ListResponse | IpcError> {
 /**
  * アセットを削除
  */
-export async function deleteAsset(request: DeleteRequest): Promise<DeleteResponse | IpcError> {
+export async function deleteAsset(
+  request: DeleteRequest,
+): Promise<DeleteResponse | IpcError> {
   const result = await runCli<CliDeleteResponse>({
-    args: ['delete', request.assetId, '--force'],
+    args: ["delete", request.assetId, "--force"],
   });
 
   if (isIpcError(result)) {
@@ -217,7 +222,16 @@ export async function deleteAsset(request: DeleteRequest): Promise<DeleteRespons
 // =============================================================================
 
 /** 動画ファイル拡張子フィルタ */
-const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv', 'm4v'];
+const VIDEO_EXTENSIONS = [
+  "mp4",
+  "mov",
+  "avi",
+  "mkv",
+  "webm",
+  "wmv",
+  "flv",
+  "m4v",
+];
 
 /** 前回選択したディレクトリを記憶 */
 let lastSelectedDirectory: string | undefined;
@@ -228,17 +242,20 @@ let lastSelectedDirectory: string | undefined;
 export async function selectFile(): Promise<SelectFileResponse | IpcError> {
   const focusedWindow = BrowserWindow.getFocusedWindow();
 
-  const result = await dialog.showOpenDialog(focusedWindow ?? undefined as any, {
-    title: 'アップロードする動画を選択',
-    defaultPath: lastSelectedDirectory,
-    filters: [
-      {
-        name: '動画ファイル',
-        extensions: VIDEO_EXTENSIONS,
-      },
-    ],
-    properties: ['openFile'],
-  });
+  const result = await dialog.showOpenDialog(
+    focusedWindow ?? (undefined as any),
+    {
+      title: "アップロードする動画を選択",
+      defaultPath: lastSelectedDirectory,
+      filters: [
+        {
+          name: "動画ファイル",
+          extensions: VIDEO_EXTENSIONS,
+        },
+      ],
+      properties: ["openFile"],
+    },
+  );
 
   if (result.canceled || result.filePaths.length === 0) {
     return { filePath: null };
@@ -261,10 +278,10 @@ export async function selectFile(): Promise<SelectFileResponse | IpcError> {
 function getCliPath(): string {
   const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
   if (isDev) {
-    return path.join(process.env.APP_ROOT ?? '', 'bin', 'vidyeet-cli.exe');
+    return path.join(process.env.APP_ROOT ?? "", "bin", "vidyeet-cli.exe");
   }
   // 配布時: resources/bin/vidyeet-cli.exe
-  return path.join(process.resourcesPath, 'bin', 'vidyeet-cli.exe');
+  return path.join(process.resourcesPath, "bin", "vidyeet-cli.exe");
 }
 
 /**
@@ -274,25 +291,25 @@ function getCliPath(): string {
  */
 export function upload(
   request: UploadRequest,
-  onProgress?: (progress: UploadProgress) => void
+  onProgress?: (progress: UploadProgress) => void,
 ): Promise<UploadResponse | IpcError> {
   return new Promise((resolve) => {
     const cliPath = getCliPath();
-    const args = ['--machine', 'upload', request.filePath, '--progress'];
+    const args = ["--machine", "upload", request.filePath, "--progress"];
 
     const child = spawn(cliPath, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
-    child.stdout.on('data', (data: Buffer) => {
+    child.stdout.on("data", (data: Buffer) => {
       const text = data.toString();
       stdout += text;
 
       // 改行区切りでJSONを処理
-      const lines = text.split('\n').filter((line) => line.trim());
+      const lines = text.split("\n").filter((line) => line.trim());
       for (const line of lines) {
         try {
           const json = JSON.parse(line);
@@ -301,12 +318,19 @@ export function upload(
           if (json.phase && onProgress) {
             const p = json.phase;
             onProgress({
-              phase: p.phase as UploadProgress['phase'],
+              phase: p.phase as UploadProgress["phase"],
               fileName: p.file_name,
               sizeBytes: p.size_bytes,
               format: p.format,
               uploadId: p.upload_id,
               percent: p.percent,
+              // uploading_chunk フェーズ用のフィールド
+              currentChunk: p.current_chunk,
+              totalChunks: p.total_chunks,
+              bytesSent: p.bytes_sent,
+              totalBytes: p.total_bytes,
+              // waiting_for_asset フェーズ用のフィールド
+              elapsedSecs: p.elapsed_secs,
             });
           }
 
@@ -321,8 +345,8 @@ export function upload(
           // エラー完了
           if (json.success === false && json.error) {
             resolve({
-              code: 'CLI_NON_ZERO_EXIT',
-              message: json.error.message || 'アップロードに失敗しました',
+              code: "CLI_NON_ZERO_EXIT",
+              message: json.error.message || "アップロードに失敗しました",
               details: json.error,
             });
           }
@@ -332,22 +356,22 @@ export function upload(
       }
     });
 
-    child.stderr.on('data', (data: Buffer) => {
+    child.stderr.on("data", (data: Buffer) => {
       stderr += data.toString();
     });
 
-    child.on('error', (err) => {
+    child.on("error", (err) => {
       resolve({
-        code: 'CLI_NOT_FOUND',
+        code: "CLI_NOT_FOUND",
         message: `CLIの起動に失敗しました: ${err.message}`,
       });
     });
 
-    child.on('close', (code) => {
+    child.on("close", (code) => {
       // 正常終了（resolveはstdout処理で完了済みのはず）
       if (code !== 0 && !stdout.includes('"success":true')) {
         resolve({
-          code: 'CLI_NON_ZERO_EXIT',
+          code: "CLI_NON_ZERO_EXIT",
           message: `アップロードに失敗しました (exit code: ${code})`,
           details: { stderr, stdout },
         });

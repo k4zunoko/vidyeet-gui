@@ -35,5 +35,7 @@ release/
 tmp-*.json
 tmp-*.txt
 
-source.mp4
 package-lock.json
+bin/*.md
+
+source.mp4

@@ -11,12 +11,12 @@
 
 /** IPC統一エラーコード */
 export type IpcErrorCode =
-  | 'CLI_NOT_FOUND'
-  | 'CLI_NON_ZERO_EXIT'
-  | 'CLI_BAD_JSON'
-  | 'CLI_TIMEOUT'
-  | 'NOT_AUTHENTICATED'
-  | 'UNKNOWN_ERROR';
+  | "CLI_NOT_FOUND"
+  | "CLI_NON_ZERO_EXIT"
+  | "CLI_BAD_JSON"
+  | "CLI_TIMEOUT"
+  | "NOT_AUTHENTICATED"
+  | "UNKNOWN_ERROR";
 
 /** IPC統一エラー応答 */
 export interface IpcError {
@@ -28,10 +28,10 @@ export interface IpcError {
 /** エラー判定用ガード */
 export function isIpcError(value: unknown): value is IpcError {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    'code' in value &&
-    'message' in value
+    "code" in value &&
+    "message" in value
   );
 }
 
@@ -101,13 +101,15 @@ export interface SelectFileResponse {
 
 /** アップロード進捗フェーズ */
 export type UploadPhase =
-  | 'validating_file'
-  | 'file_validated'
-  | 'creating_direct_upload'
-  | 'direct_upload_created'
-  | 'uploading_file'
-  | 'upload_progress'
-  | 'completed';
+  | "validating_file"
+  | "file_validated"
+  | "creating_direct_upload"
+  | "direct_upload_created"
+  | "uploading_file"
+  | "uploading_chunk"
+  | "file_uploaded"
+  | "waiting_for_asset"
+  | "completed";
 
 /** アップロード進捗情報 */
 export interface UploadProgress {
@@ -117,6 +119,13 @@ export interface UploadProgress {
   format?: string;
   uploadId?: string;
   percent?: number;
+  /** チャンクアップロード進捗 (uploading_chunk フェーズ) */
+  currentChunk?: number;
+  totalChunks?: number;
+  bytesSent?: number;
+  totalBytes?: number;
+  /** アセット待機中の経過時間 (waiting_for_asset フェーズ) */
+  elapsedSecs?: number;
 }
 
 /** vidyeet:upload 要求 */
@@ -136,14 +145,14 @@ export interface UploadResponse {
 
 /** IPCチャネル名 */
 export const IpcChannels = {
-  STATUS: 'vidyeet:status',
-  LOGIN: 'vidyeet:login',
-  LOGOUT: 'vidyeet:logout',
-  LIST: 'vidyeet:list',
-  DELETE: 'vidyeet:delete',
-  SELECT_FILE: 'vidyeet:selectFile',
-  UPLOAD: 'vidyeet:upload',
-  CLIPBOARD_WRITE: 'clipboard:write',
+  STATUS: "vidyeet:status",
+  LOGIN: "vidyeet:login",
+  LOGOUT: "vidyeet:logout",
+  LIST: "vidyeet:list",
+  DELETE: "vidyeet:delete",
+  SELECT_FILE: "vidyeet:selectFile",
+  UPLOAD: "vidyeet:upload",
+  CLIPBOARD_WRITE: "clipboard:write",
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
@@ -162,7 +171,7 @@ export interface VidyeetApi {
   selectFile(): Promise<SelectFileResponse | IpcError>;
   upload(
     request: UploadRequest,
-    onProgress?: (progress: UploadProgress) => void
+    onProgress?: (progress: UploadProgress) => void,
   ): Promise<UploadResponse | IpcError>;
 }
 

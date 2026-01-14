@@ -78,9 +78,38 @@ GUI側の前提（現実装）:
 
 ### 進捗行JSON（現実装が参照する形）
 
-- `phase: { phase: string; file_name?: string; size_bytes?: number; format?: string; upload_id?: string; percent?: number }`
+- `phase: { phase: string; file_name?: string; size_bytes?: number; format?: string; upload_id?: string; percent?: number; current_chunk?: number; total_chunks?: number; bytes_sent?: number; total_bytes?: number; elapsed_secs?: number }`
 
-GUIは `phase.phase` を表示用の状態として扱い、必要なら `percent` を進捗として扱える。
+GUIは `phase.phase` を表示用の状態として扱う。
+
+### 進捗フェーズの種類
+
+| フェーズ | 説明 | 追加フィールド |
+|---------|------|---------------|
+| `validating_file` | ファイル検証中 | `file_path` |
+| `file_validated` | ファイル検証完了 | `file_name`, `size_bytes`, `format` |
+| `creating_direct_upload` | アップロードURL作成中 | `file_name` |
+| `direct_upload_created` | アップロードURL作成完了 | `upload_id` |
+| `uploading_file` | アップロード開始 | `file_name`, `size_bytes` |
+| `uploading_chunk` | チャンクアップロード中 | `current_chunk`, `total_chunks`, `bytes_sent`, `total_bytes` |
+| `file_uploaded` | アップロード完了 | `file_name`, `size_bytes` |
+| `waiting_for_asset` | アセット作成待機中 | `upload_id`, `elapsed_secs` |
+| `completed` | 処理完了 | `asset_id` |
+
+### `uploading_chunk` フェーズの詳細
+
+GUIはこのフェーズでプログレスバーを表示する。
+
+```json
+{"phase":{"phase":"uploading_chunk","current_chunk":3,"total_chunks":10,"bytes_sent":3145728,"total_bytes":10485760}}
+```
+
+- `current_chunk`: 現在アップロード中のチャンク番号
+- `total_chunks`: 総チャンク数
+- `bytes_sent`: 送信済みバイト数
+- `total_bytes`: 総バイト数
+
+パーセンテージは `(bytes_sent / total_bytes) * 100` で計算する。
 
 ### 完了行JSON（現実装が参照する形）
 
