@@ -10,7 +10,7 @@
 
 ## UI/UX
 
-- [UX_PSYCHOLOGY.md](./UX_PSYCHOLOGY.md): UI設計に使う心理学的原則の要約メモ
+- [UX_PSYCHOLOGY.md](./UX_PSYCHOLOGY.md): UI設計に使う心理学的原則の要約メモ（進捗表示の補間実装を含む）
 
 ## 実装時に参照
 
@@ -25,11 +25,7 @@
 
 ## 将来
 
-- [ROADMAP.md](./ROADMAP.md): 機能追加の順序と判断基準
-
-## 移行ガイド
-
-- [migration/CLI_UPLOAD_PROGRESS_FORMAT.md](./migration/CLI_UPLOAD_PROGRESS_FORMAT.md): CLI upload進捗JSON形式の修正に伴う変更ガイド
+- [ROADMAP.md](./ROADMAP.md): 機能追加の順序と判断基準（進捗補間は実装済み）
 
 ## 更新ルール
 

@@ -11,6 +11,7 @@ import { ref, onMounted } from "vue";
 import type { AppScreen, VideoItem, ToastItem, ToastType } from "./types/app";
 import type { UploadProgress } from "../electron/types/ipc";
 import { isIpcError } from "../electron/types/ipc";
+import { useProgressInterpolation } from "./composables/useProgressInterpolation";
 import TitleBar from "./components/TitleBar.vue";
 import SideDrawer from "./components/SideDrawer.vue";
 import VideoInfoPanel from "./components/VideoInfoPanel.vue";
@@ -117,6 +118,10 @@ const uploadDialogState = ref({
     totalBytes: 0,
     showProgressBar: false,
 });
+
+// 進捗補間インスタンス
+let progressInterpolation: ReturnType<typeof useProgressInterpolation> | null =
+    null;
 
 /**
  * アップロードフェーズを日本語に変換
@@ -297,7 +302,7 @@ async function handleUpload() {
             uploadDialogState.value.phase = progress.phase;
             uploadDialogState.value.phaseText = getPhaseText(progress.phase);
 
-            // uploading_file フェーズでプログレスバーを0%表示
+            // uploading_file フェーズでプログレスバーを0%表示と補間初期化
             // CLI仕様: uploading_chunk はチャンク送信完了後に出力されるため、
             // アップロード開始の視覚的フィードバックとして uploading_file で0%表示
             // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
@@ -305,9 +310,35 @@ async function handleUpload() {
                 uploadDialogState.value.showProgressBar = true;
                 uploadDialogState.value.progressPercent = 0;
                 uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
+
+                // 進捗補間を初期化（コールバックで UI を更新）
+                const totalBytes = progress.sizeBytes ?? 0;
+                if (totalBytes > 0) {
+                    progressInterpolation = useProgressInterpolation(
+                        totalBytes,
+                        (displayBytes, displayPercent) => {
+                            // 補間された値で UI を更新
+                            if (
+                                uploadDialogState.value.showProgressBar &&
+                                uploadDialogState.value.phase ===
+                                    "uploading_chunk"
+                            ) {
+                                uploadDialogState.value.bytesSent =
+                                    Math.round(displayBytes);
+                                uploadDialogState.value.progressPercent =
+                                    Math.round(displayPercent);
+
+                                // デバッグログ（開発時のみ有効化）
+                                // console.log(
+                                //     `[Progress Interpolation] Display: ${Math.round(displayBytes)}B (${Math.round(displayPercent)}%)`
+                                // );
+                            }
+                        },
+                    );
+                }
             }
 
-            // uploading_chunk フェーズでプログレスバーを更新
+            // uploading_chunk フェーズでプログレスバーを更新（補間適用）
             if (
                 progress.phase === "uploading_chunk" &&
                 progress.totalBytes &&
@@ -317,12 +348,18 @@ async function handleUpload() {
                 uploadDialogState.value.currentChunk =
                     progress.currentChunk ?? 0;
                 uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
-                uploadDialogState.value.bytesSent = progress.bytesSent;
                 uploadDialogState.value.totalBytes = progress.totalBytes;
-                // パーセンテージを計算（UX: 進捗が見えることでユーザーは3倍長く待てる）
-                uploadDialogState.value.progressPercent = Math.round(
-                    (progress.bytesSent / progress.totalBytes) * 100,
-                );
+
+                // Truth（確定値）を更新（コールバックで UI が自動更新される）
+                if (progressInterpolation) {
+                    progressInterpolation.updateTruth(progress.bytesSent);
+                } else {
+                    // フォールバック: 補間が初期化されていない場合は直接設定
+                    uploadDialogState.value.bytesSent = progress.bytesSent;
+                    uploadDialogState.value.progressPercent = Math.round(
+                        (progress.bytesSent / progress.totalBytes) * 100,
+                    );
+                }
             }
 
             // file_uploaded, waiting_for_asset, completed ではプログレスバーを100%に
@@ -332,7 +369,15 @@ async function handleUpload() {
                 )
             ) {
                 if (uploadDialogState.value.showProgressBar) {
+                    // 補間を停止し、100% に設定
+                    if (progressInterpolation) {
+                        progressInterpolation.updateTruth(
+                            uploadDialogState.value.totalBytes,
+                        );
+                    }
                     uploadDialogState.value.progressPercent = 100;
+                    uploadDialogState.value.bytesSent =
+                        uploadDialogState.value.totalBytes;
                 }
             }
         },
@@ -341,6 +386,10 @@ async function handleUpload() {
     if (isIpcError(uploadResult)) {
         uploadDialogState.value.isUploading = false;
         uploadDialogState.value.errorMessage = uploadResult.message;
+        // エラー時は進捗補間をクリーンアップ
+        if (progressInterpolation) {
+            progressInterpolation = null;
+        }
         return;
     }
 
@@ -357,6 +406,10 @@ async function handleUpload() {
         uploadDialogState.value.isOpen = false;
         // トースト通知を表示
         showToast("success", "アップロードが完了しました");
+        // 成功時も進捗補間をクリーンアップ
+        if (progressInterpolation) {
+            progressInterpolation = null;
+        }
     }, 1500);
 }
 
@@ -667,9 +720,12 @@ onMounted(() => {
                                         </span>
                                     </div>
                                     <p class="upload-progress-detail">
-                                        チャンク
+                                        チャンク完了:
                                         {{ uploadDialogState.currentChunk }} /
                                         {{ uploadDialogState.totalChunks }}
+                                        <span class="upload-progress-hint"
+                                            >（進捗表示は推定値）</span
+                                        >
                                     </p>
                                 </div>
 
@@ -978,8 +1034,9 @@ onMounted(() => {
         var(--color-primary-light, #ff69b4)
     );
     border-radius: 4px;
-    /* UX: スムーズなトランジションで進捗の動きを知覚しやすく */
-    transition: width 0.3s ease-out;
+    /* UX: 補間された進捗値のための滑らかなトランジション（100ms = 補間更新間隔） */
+    /* ease-out で減速を視覚化し、chunk 境界での停止を自然に見せる */
+    transition: width 0.1s linear;
     /* 輝きエフェクトで視覚的興味を維持 */
     position: relative;
 }
@@ -1049,6 +1106,14 @@ onMounted(() => {
     text-align: center;
     margin-top: 0.25rem;
     opacity: 0.8;
+}
+
+.upload-progress-hint {
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+    opacity: 0.6;
+    font-style: italic;
+    margin-left: 0.25rem;
 }
 
 .upload-phase-text {

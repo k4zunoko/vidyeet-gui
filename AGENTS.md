@@ -24,13 +24,6 @@
 | [ROADMAP.md](./docs/ROADMAP.md) | 将来の機能追加計画 |
 | [UX_PSYCHOLOGY.md](./docs/UX_PSYCHOLOGY.md) | UI/UX設計の参考メモ（心理学的原則の要約） |
 
-### 移行ガイド
-
-CLI仕様変更時の対応手順は `docs/migration/` に整理されています:
-| ドキュメント | 内容 |
-|------------|------|
-| [CLI_UPLOAD_PROGRESS_FORMAT.md](./docs/migration/CLI_UPLOAD_PROGRESS_FORMAT.md) | CLIアップロード進捗JSON形式の修正対応 |
-
 ## ドキュメント管理方針
 
 **重要**: これらのドキュメントは実装状況と常に一致するよう、以下のタイミングで更新してください:
@@ -77,4 +70,4 @@ GitHub Copilotは常にこれらのドキュメントを参照してサポート
 - **AGENTS.mdに詳細を書かない**: 詳細はdocs/配下に分離
 - **重複を避ける**: 同じ情報は1箇所のみに記載し、相互参照を使用
 - **実装との一致**: ドキュメントと実装が乖離した場合、必ず同期する
-
+- **docs/以外にドキュメントを増やさない**: docs/配下に集中

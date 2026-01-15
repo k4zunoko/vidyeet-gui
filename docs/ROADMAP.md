@@ -18,7 +18,7 @@
 ## フェーズ1: 基本操作の拡張
 
 - 動画詳細の表示（`show <asset_id>`）
-- “URLコピー”の拡張
+- "URLコピー"の拡張
   - HLS URL
   - サムネイルURL
   - MP4 URL（現状は対応済み）
@@ -27,7 +27,13 @@
 
 - 失敗時の再試行/部分的復帰
 - キャンセル/タイムアウト
-- 進捗（percent）の表示強化
+- ~~進捗（percent）の表示強化~~ **✓ 実装済み（進捗補間）**
+  - Truth（確定値）とDisplay（表示値）の分離
+  - 指数移動平均（EMA）とease-outカーブによる滑らかな補間
+  - chunk境界での自然な減速・停止
+  - 推定であることのUI明示
+  - 実装: `src/composables/useProgressInterpolation.ts`
+  - 詳細: `docs/UX_PSYCHOLOGY.md` - 進捗表示の補間セクション
 
 ## フェーズ3: 品質/運用
 
