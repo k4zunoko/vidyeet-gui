@@ -297,8 +297,17 @@ async function handleUpload() {
             uploadDialogState.value.phase = progress.phase;
             uploadDialogState.value.phaseText = getPhaseText(progress.phase);
 
-            // uploading_chunk フェーズではプログレスバーを表示
+            // uploading_file フェーズでプログレスバーを0%表示
+            // CLI仕様: uploading_chunk はチャンク送信完了後に出力されるため、
+            // アップロード開始の視覚的フィードバックとして uploading_file で0%表示
             // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
+            if (progress.phase === "uploading_file") {
+                uploadDialogState.value.showProgressBar = true;
+                uploadDialogState.value.progressPercent = 0;
+                uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
+            }
+
+            // uploading_chunk フェーズでプログレスバーを更新
             if (
                 progress.phase === "uploading_chunk" &&
                 progress.totalBytes &&
