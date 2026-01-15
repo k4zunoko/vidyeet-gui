@@ -315,22 +315,22 @@ export function upload(
           const json = JSON.parse(line);
 
           // 進捗通知
-          if (json.phase && onProgress) {
-            const p = json.phase;
+          // 修正: phase が文字列の場合（正しいフラットフォーマット）
+          if (typeof json.phase === "string" && onProgress) {
             onProgress({
-              phase: p.phase as UploadProgress["phase"],
-              fileName: p.file_name,
-              sizeBytes: p.size_bytes,
-              format: p.format,
-              uploadId: p.upload_id,
-              percent: p.percent,
+              phase: json.phase as UploadProgress["phase"],
+              fileName: json.file_name,
+              sizeBytes: json.size_bytes,
+              format: json.format,
+              uploadId: json.upload_id,
+              percent: json.percent,
               // uploading_chunk フェーズ用のフィールド
-              currentChunk: p.current_chunk,
-              totalChunks: p.total_chunks,
-              bytesSent: p.bytes_sent,
-              totalBytes: p.total_bytes,
+              currentChunk: json.current_chunk,
+              totalChunks: json.total_chunks,
+              bytesSent: json.bytes_sent,
+              totalBytes: json.total_bytes,
               // waiting_for_asset フェーズ用のフィールド
-              elapsedSecs: p.elapsed_secs,
+              elapsedSecs: json.elapsed_secs,
             });
           }
 
