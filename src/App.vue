@@ -723,9 +723,6 @@ onMounted(() => {
                                         チャンク完了:
                                         {{ uploadDialogState.currentChunk }} /
                                         {{ uploadDialogState.totalChunks }}
-                                        <span class="upload-progress-hint"
-                                            >（進捗表示は推定値）</span
-                                        >
                                     </p>
                                 </div>
 
@@ -1106,14 +1103,6 @@ onMounted(() => {
     text-align: center;
     margin-top: 0.25rem;
     opacity: 0.8;
-}
-
-.upload-progress-hint {
-    font-size: 0.625rem;
-    color: var(--color-text-muted);
-    opacity: 0.6;
-    font-style: italic;
-    margin-left: 0.25rem;
 }
 
 .upload-phase-text {
