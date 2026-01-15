@@ -97,6 +97,9 @@ export function useProgressInterpolation(
   /** 最後に chunk 完了が報告された時刻 */
   const lastChunkTime = ref<number | null>(null);
 
+  /** アップロード開始時刻（最初のchunkの所要時間計測用） */
+  const uploadStartTime = ref<number | null>(null);
+
   /** chunk あたりの期待所要時間（ミリ秒、EMA で計算） */
   const expectedChunkDuration = ref<number | null>(null);
 
@@ -221,6 +224,16 @@ export function useProgressInterpolation(
   // ==========================================================================
 
   /**
+   * アップロード開始を通知（最初のchunk送信開始時）
+   *
+   * アップロード開始時刻を記録し、1個目のchunk完了時に
+   * 即座に補間を開始できるようにする
+   */
+  function startUpload() {
+    uploadStartTime.value = Date.now();
+  }
+
+  /**
    * Truth（確定値）を更新
    *
    * CLI から chunk 完了が報告された時に呼ぶ
@@ -238,6 +251,14 @@ export function useProgressInterpolation(
         chunkDuration,
         EMA_ALPHA,
       );
+    } else if (
+      uploadStartTime.value !== null &&
+      lastChunkTime.value === null &&
+      bytes > 0
+    ) {
+      // 1個目のchunk: アップロード開始時刻からの経過時間
+      const chunkDuration = now - uploadStartTime.value;
+      expectedChunkDuration.value = chunkDuration;
     }
 
     // Truth を更新
@@ -281,6 +302,7 @@ export function useProgressInterpolation(
     truthBytes.value = 0;
     displayBytes.value = 0;
     lastChunkTime.value = null;
+    uploadStartTime.value = null;
     expectedChunkDuration.value = null;
   }
 
@@ -320,6 +342,9 @@ export function useProgressInterpolation(
 
     /** 推定が有効かどうか（読み取り専用） */
     isInterpolating,
+
+    /** アップロード開始を通知 */
+    startUpload,
 
     /** Truth を更新 */
     updateTruth,

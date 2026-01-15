@@ -335,6 +335,9 @@ async function handleUpload() {
                             }
                         },
                     );
+
+                    // アップロード開始時刻を記録（1個目のchunk完了時に即座に補間開始できるようにする）
+                    progressInterpolation.startUpload();
                 }
             }
 
