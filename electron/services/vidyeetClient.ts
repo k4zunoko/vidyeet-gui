@@ -315,7 +315,6 @@ export function upload(
           const json = JSON.parse(line);
 
           // 進捗通知
-          // 修正: phase が文字列の場合（正しいフラットフォーマット）
           if (typeof json.phase === "string" && onProgress) {
             onProgress({
               phase: json.phase as UploadProgress["phase"],
