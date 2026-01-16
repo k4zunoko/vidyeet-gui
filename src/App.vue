@@ -7,7 +7,7 @@
  * コンテキストメニュー・削除ダイアログのグローバル管理
  * @see docs/UI_SPEC.md - 起動時状態遷移
  */
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import type { AppScreen, VideoItem, ToastItem, ToastType } from "./types/app";
 import type { UploadProgress } from "../electron/types/ipc";
 import { isIpcError } from "../electron/types/ipc";
@@ -17,6 +17,7 @@ import SideDrawer from "./components/SideDrawer.vue";
 import VideoInfoPanel from "./components/VideoInfoPanel.vue";
 import VideoContextMenu from "./components/VideoContextMenu.vue";
 import ToastNotification from "./components/ToastNotification.vue";
+import DragDropOverlay from "./components/DragDropOverlay.vue";
 import LoginView from "./features/auth/LoginView.vue";
 import LibraryView from "./features/library/LibraryView.vue";
 import VideoPlayer from "./features/player/VideoPlayer.vue";
@@ -35,6 +36,12 @@ const isDrawerOpen = ref(false);
 
 // LibraryViewへの参照（reload用）
 const libraryRef = ref<InstanceType<typeof LibraryView> | null>(null);
+
+// =============================================================================
+// ドラッグアンドドロップ状態
+// =============================================================================
+const isDragging = ref(false);
+let dragCounter = 0; // 子要素へのドラッグ判定用カウンター
 
 // =============================================================================
 // コンテキストメニュー状態（グローバル管理）
@@ -231,6 +238,198 @@ function toggleDrawer() {
  */
 function closeDrawer() {
     isDrawerOpen.value = false;
+}
+
+// =============================================================================
+// ドラッグアンドドロップ操作
+// =============================================================================
+
+/**
+ * ファイルが動画形式かどうかをチェック
+ */
+function isVideoFile(file: File): boolean {
+    const videoTypes = [
+        "video/mp4",
+        "video/quicktime",
+        "video/x-msvideo",
+        "video/x-matroska",
+        "video/webm",
+        "video/ogg",
+    ];
+    return videoTypes.includes(file.type);
+}
+
+/**
+ * dragenter イベントハンドラ
+ * UX原則: ドハティの閾値 - 即座に視覚的フィードバックを提供
+ */
+function handleDragEnter(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    dragCounter++;
+    if (dragCounter === 1) {
+        isDragging.value = true;
+    }
+}
+
+/**
+ * dragleave イベントハンドラ
+ */
+function handleDragLeave(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    dragCounter--;
+    if (dragCounter === 0) {
+        isDragging.value = false;
+    }
+}
+
+/**
+ * dragover イベントハンドラ
+ */
+function handleDragOver(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+/**
+ * drop イベントハンドラ
+ * UX原則:
+ * - ドハティの閾値: ドロップ後即座にアップロード進捗ダイアログを表示
+ * - フレーミング効果: エラーは次の行動を示唆
+ */
+async function handleDrop(e: DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // ドラッグ状態をリセット
+    isDragging.value = false;
+    dragCounter = 0;
+
+    // ファイルを取得
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) {
+        return;
+    }
+
+    // 最初のファイルのみ処理（現在は単一ファイルアップロードのみ対応）
+    const file = files[0];
+
+    // 動画形式チェック
+    if (!isVideoFile(file)) {
+        showToast("error", "動画ファイルのみアップロードできます");
+        return;
+    }
+
+    // ファイルパスを取得してアップロード
+    await uploadDroppedFile(file);
+}
+
+/**
+ * ドロップされたファイルをアップロード
+ */
+async function uploadDroppedFile(file: File) {
+    // ドロワーを閉じる
+    isDrawerOpen.value = false;
+
+    // ファイル名を取得
+    const fileName = file.name;
+
+    // アップロードダイアログを表示
+    // UX原則: ドハティの閾値 - 0.4秒以上の処理には即座にフィードバックを表示
+    uploadDialogState.value = {
+        isOpen: true,
+        fileName,
+        phase: "starting",
+        phaseText: "開始中...",
+        isUploading: true,
+        errorMessage: null,
+        // プログレスバー状態をリセット
+        progressPercent: 0,
+        currentChunk: 0,
+        totalChunks: 0,
+        bytesSent: 0,
+        totalBytes: 0,
+        showProgressBar: false,
+    };
+
+    // File オブジェクトからパスを取得（Electron環境では path プロパティが利用可能）
+    const filePath = (file as any).path || "";
+
+    if (!filePath) {
+        uploadDialogState.value.isUploading = false;
+        uploadDialogState.value.errorMessage =
+            "ファイルパスの取得に失敗しました";
+        return;
+    }
+
+    // アップロード実行（既存のhandleUpload関数のロジックを再利用）
+    const uploadResult = await window.vidyeet.upload(
+        { filePath },
+        (progress: UploadProgress) => {
+            // 進捗更新処理（既存のコールバックと同じ）
+            const { phase, currentChunk, totalChunks, bytesSent, totalBytes } =
+                progress;
+
+            uploadDialogState.value.phase = phase;
+            uploadDialogState.value.phaseText = getPhaseText(phase);
+            uploadDialogState.value.currentChunk = currentChunk || 0;
+            uploadDialogState.value.totalChunks = totalChunks || 0;
+            uploadDialogState.value.bytesSent = bytesSent || 0;
+            uploadDialogState.value.totalBytes = totalBytes || 0;
+
+            if (phase === "uploading_chunk") {
+                uploadDialogState.value.showProgressBar = true;
+
+                if (!progressInterpolation && totalBytes && totalChunks) {
+                    progressInterpolation = useProgressInterpolation(
+                        totalBytes,
+                        (displayBytes, displayPercent) => {
+                            uploadDialogState.value.bytesSent =
+                                Math.round(displayBytes);
+                            uploadDialogState.value.progressPercent =
+                                Math.round(displayPercent);
+                        },
+                    );
+                    progressInterpolation.startUpload();
+                    progressInterpolation.initializeWarmup(totalChunks);
+                }
+
+                if (progressInterpolation && bytesSent !== undefined) {
+                    progressInterpolation.updateTruth(bytesSent);
+                }
+            } else {
+                uploadDialogState.value.progressPercent = 0;
+            }
+        },
+    );
+
+    if (progressInterpolation) {
+        progressInterpolation.reset();
+        progressInterpolation = null;
+    }
+
+    if (isIpcError(uploadResult)) {
+        uploadDialogState.value.isUploading = false;
+        uploadDialogState.value.errorMessage = uploadResult.message;
+        return;
+    }
+
+    // 成功
+    uploadDialogState.value.phase = "completed";
+    uploadDialogState.value.phaseText = "完了しました";
+    uploadDialogState.value.progressPercent = 100;
+
+    // UX原則: ピーク・エンドの法則 - 成功時は短く肯定的なメッセージで良い印象を残す
+    showToast("success", "アップロードが完了しました");
+
+    setTimeout(() => {
+        uploadDialogState.value.isUploading = false;
+        uploadDialogState.value.isOpen = false;
+        handleReload();
+    }, 1500);
 }
 
 // =============================================================================
@@ -518,8 +717,31 @@ async function confirmDelete() {
     }
 }
 
+/**
+ * マウント時の初期化
+ * - 認証チェック
+ * - グローバルドラッグアンドドロップイベントの登録
+ */
 onMounted(() => {
     checkAuth();
+
+    // グローバルドラッグアンドドロップイベントを登録
+    // UX原則: ウィンドウ全体でドロップを受け付けることで、ユーザビリティを向上
+    document.addEventListener("dragenter", handleDragEnter);
+    document.addEventListener("dragleave", handleDragLeave);
+    document.addEventListener("dragover", handleDragOver);
+    document.addEventListener("drop", handleDrop);
+});
+
+/**
+ * アンマウント時のクリーンアップ
+ */
+onBeforeUnmount(() => {
+    // イベントリスナーを削除
+    document.removeEventListener("dragenter", handleDragEnter);
+    document.removeEventListener("dragleave", handleDragLeave);
+    document.removeEventListener("dragover", handleDragOver);
+    document.removeEventListener("drop", handleDrop);
 });
 </script>
 
@@ -763,6 +985,9 @@ onMounted(() => {
 
             <!-- トースト通知 -->
             <ToastNotification :toasts="toasts" @close="removeToast" />
+
+            <!-- ドラッグアンドドロップオーバーレイ -->
+            <DragDropOverlay :is-dragging="isDragging" />
         </div>
     </div>
 </template>
