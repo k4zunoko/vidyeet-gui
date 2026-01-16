@@ -131,11 +131,11 @@ export function useProgressInterpolation(
   /** 補間更新の間隔（ミリ秒） */
   const INTERPOLATION_INTERVAL = 100; // 100ms = 10fps
 
-  /** ウォームアップの目標パーセンテージ（0.015 = 1.5%） */
-  const WARMUP_TARGET_PERCENT = 0.015; // 1.5%
+  /** ウォームアップの目標パーセンテージ（0.08 = 8%） */
+  const WARMUP_TARGET_PERCENT = 0.08; // 8%
 
   /** ウォームアップの所要時間（ミリ秒） */
-  const WARMUP_DURATION = 2000; // 2秒
+  const WARMUP_DURATION = 2500; // 2.5秒
 
   // ==========================================================================
   // Computed Properties
@@ -189,20 +189,33 @@ export function useProgressInterpolation(
     // Ease-out カーブを適用
     const easedT = easeOutCubic(t);
 
-    // 次の chunk 境界までの距離
+    // ウォームアップオフセット（チャンク進捗は 1.5% から開始）
+    const warmupOffset = totalBytes * WARMUP_TARGET_PERCENT;
+
+    // truthBytes を warmupOffset 基準にスケーリング
+    // truthBytes: 0 → totalBytes を warmupOffset → totalBytes にマッピング
+    const progressRatio = totalBytes === 0 ? 0 : truthBytes.value / totalBytes;
+    const scaledTruthBytes =
+      warmupOffset + progressRatio * (totalBytes - warmupOffset);
+
+    // 次の chunk 境界もスケーリング
     const boundary = nextChunkBoundary.value;
-    const rangeBytes = boundary - truthBytes.value;
+    const boundaryRatio = totalBytes === 0 ? 0 : boundary / totalBytes;
+    const scaledBoundary =
+      warmupOffset + boundaryRatio * (totalBytes - warmupOffset);
+
+    const rangeBytes = scaledBoundary - scaledTruthBytes;
 
     // マージンを考慮して境界手前で停止
     const marginBytes = totalBytes * BOUNDARY_MARGIN;
-    const maxProgress = boundary - marginBytes;
+    const maxProgress = scaledBoundary - marginBytes;
 
-    // 表示値を更新（truth ≤ display < boundary - margin）
+    // 表示値を更新（scaledTruth ≤ display < scaledBoundary - margin）
     const interpolatedBytes =
-      truthBytes.value + rangeBytes * easedT * (1 - BOUNDARY_MARGIN);
+      scaledTruthBytes + rangeBytes * easedT * (1 - BOUNDARY_MARGIN);
     displayBytes.value = Math.min(
       maxProgress,
-      Math.max(truthBytes.value, interpolatedBytes),
+      Math.max(scaledTruthBytes, interpolatedBytes),
     );
 
     // コールバックで UI に通知
@@ -375,9 +388,15 @@ export function useProgressInterpolation(
     // Truth を更新
     truthBytes.value = bytes;
 
-    // Display が Truth より小さい場合は即座に同期
-    if (displayBytes.value < bytes) {
-      displayBytes.value = bytes;
+    // ウォームアップオフセットを考慮してスケーリング
+    const warmupOffset = totalBytes * WARMUP_TARGET_PERCENT;
+    const progressRatio = totalBytes === 0 ? 0 : bytes / totalBytes;
+    const scaledBytes =
+      warmupOffset + progressRatio * (totalBytes - warmupOffset);
+
+    // Display が scaledBytes より小さい場合は即座に同期
+    if (displayBytes.value < scaledBytes) {
+      displayBytes.value = scaledBytes;
     }
 
     // タイムスタンプを更新
