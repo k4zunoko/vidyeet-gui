@@ -136,7 +136,7 @@ function getPhaseText(phase: string): string {
         file_validated: "ファイル検証完了",
         creating_direct_upload: "アップロード準備中...",
         direct_upload_created: "アップロード準備完了",
-        uploading_file: "アップロード開始...",
+        uploading_file: "アップロード中...",
         uploading_chunk: "アップロード中...",
         file_uploaded: "アップロード完了",
         waiting_for_asset: "処理中...",
@@ -728,11 +728,6 @@ onMounted(() => {
                                             }}
                                         </span>
                                     </div>
-                                    <p class="upload-progress-detail">
-                                        チャンク完了:
-                                        {{ uploadDialogState.currentChunk }} /
-                                        {{ uploadDialogState.totalChunks }}
-                                    </p>
                                 </div>
 
                                 <!-- スピナー表示 (プログレスバーが無い時) -->
@@ -1104,14 +1099,6 @@ onMounted(() => {
     font-size: 0.75rem;
     color: var(--color-text-muted);
     font-variant-numeric: tabular-nums;
-}
-
-.upload-progress-detail {
-    font-size: 0.6875rem;
-    color: var(--color-text-muted);
-    text-align: center;
-    margin-top: 0.25rem;
-    opacity: 0.8;
 }
 
 .upload-phase-text {
