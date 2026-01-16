@@ -365,70 +365,123 @@ async function uploadDroppedFile(file: File) {
         return;
     }
 
-    // アップロード実行（既存のhandleUpload関数のロジックを再利用）
+    // アップロード実行
     const uploadResult = await window.vidyeet.upload(
         { filePath },
         (progress: UploadProgress) => {
-            // 進捗更新処理（既存のコールバックと同じ）
-            const { phase, currentChunk, totalChunks, bytesSent, totalBytes } =
-                progress;
+            // 進捗更新
+            uploadDialogState.value.phase = progress.phase;
+            uploadDialogState.value.phaseText = getPhaseText(progress.phase);
 
-            uploadDialogState.value.phase = phase;
-            uploadDialogState.value.phaseText = getPhaseText(phase);
-            uploadDialogState.value.currentChunk = currentChunk || 0;
-            uploadDialogState.value.totalChunks = totalChunks || 0;
-            uploadDialogState.value.bytesSent = bytesSent || 0;
-            uploadDialogState.value.totalBytes = totalBytes || 0;
-
-            if (phase === "uploading_chunk") {
+            // uploading_file フェーズでプログレスバーを0%表示と補間初期化
+            // CLI仕様 v1.1: uploading_file に total_chunks が含まれるようになった
+            // Warmup モード: 第1chunk完了までの間だけ time-based で進捗を滑らかに表示
+            // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
+            if (progress.phase === "uploading_file") {
                 uploadDialogState.value.showProgressBar = true;
+                uploadDialogState.value.progressPercent = 0;
+                uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
+                uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
 
-                if (!progressInterpolation && totalBytes && totalChunks) {
+                // 進捗補間を初期化（コールバックで UI を更新）
+                const totalBytes = progress.sizeBytes ?? 0;
+                const totalChunks = progress.totalChunks ?? 0;
+                if (totalBytes > 0) {
                     progressInterpolation = useProgressInterpolation(
                         totalBytes,
                         (displayBytes, displayPercent) => {
-                            uploadDialogState.value.bytesSent =
-                                Math.round(displayBytes);
-                            uploadDialogState.value.progressPercent =
-                                Math.round(displayPercent);
+                            // 補間された値で UI を更新
+                            if (uploadDialogState.value.showProgressBar) {
+                                uploadDialogState.value.bytesSent =
+                                    Math.round(displayBytes);
+                                uploadDialogState.value.progressPercent =
+                                    Math.round(displayPercent);
+                            }
                         },
                     );
-                    progressInterpolation.startUpload();
-                    progressInterpolation.initializeWarmup(totalChunks);
-                }
 
-                if (progressInterpolation && bytesSent !== undefined) {
-                    progressInterpolation.updateTruth(bytesSent);
+                    // アップロード開始時刻を記録
+                    progressInterpolation.startUpload();
+
+                    // Warmup モードを初期化（total_chunks 確定時）
+                    if (totalChunks > 0) {
+                        progressInterpolation.initializeWarmup(totalChunks);
+                    }
                 }
-            } else {
-                uploadDialogState.value.progressPercent = 0;
+            }
+
+            // uploading_chunk フェーズでプログレスバーを更新（補間適用）
+            if (
+                progress.phase === "uploading_chunk" &&
+                progress.totalBytes &&
+                progress.bytesSent !== undefined
+            ) {
+                uploadDialogState.value.showProgressBar = true;
+                uploadDialogState.value.currentChunk =
+                    progress.currentChunk ?? 0;
+                uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
+                uploadDialogState.value.totalBytes = progress.totalBytes;
+
+                // Truth（確定値）を更新（コールバックで UI が自動更新される）
+                if (progressInterpolation) {
+                    progressInterpolation.updateTruth(progress.bytesSent);
+                } else {
+                    // フォールバック: 補間が初期化されていない場合は直接設定
+                    uploadDialogState.value.bytesSent = progress.bytesSent;
+                    uploadDialogState.value.progressPercent = Math.round(
+                        (progress.bytesSent / progress.totalBytes) * 100,
+                    );
+                }
+            }
+
+            // file_uploaded, waiting_for_asset, completed ではプログレスバーを100%に
+            if (
+                ["file_uploaded", "waiting_for_asset", "completed"].includes(
+                    progress.phase,
+                )
+            ) {
+                if (uploadDialogState.value.showProgressBar) {
+                    // 補間を停止し、100% に設定
+                    if (progressInterpolation) {
+                        progressInterpolation.updateTruth(
+                            uploadDialogState.value.totalBytes,
+                        );
+                    }
+                    uploadDialogState.value.progressPercent = 100;
+                    uploadDialogState.value.bytesSent =
+                        uploadDialogState.value.totalBytes;
+                }
             }
         },
     );
 
-    if (progressInterpolation) {
-        progressInterpolation.reset();
-        progressInterpolation = null;
-    }
-
     if (isIpcError(uploadResult)) {
         uploadDialogState.value.isUploading = false;
         uploadDialogState.value.errorMessage = uploadResult.message;
+        // エラー時は進捗補間をクリーンアップ
+        if (progressInterpolation) {
+            progressInterpolation = null;
+        }
         return;
     }
 
     // 成功
     uploadDialogState.value.phase = "completed";
-    uploadDialogState.value.phaseText = "完了しました";
-    uploadDialogState.value.progressPercent = 100;
+    uploadDialogState.value.phaseText = "アップロード完了！";
+    uploadDialogState.value.isUploading = false;
 
-    // UX原則: ピーク・エンドの法則 - 成功時は短く肯定的なメッセージで良い印象を残す
-    showToast("success", "アップロードが完了しました");
+    // 一覧を再読み込み
+    libraryRef.value?.reload();
 
+    // 少し待ってからダイアログを閉じる
     setTimeout(() => {
-        uploadDialogState.value.isUploading = false;
         uploadDialogState.value.isOpen = false;
-        handleReload();
+        // トースト通知を表示
+        showToast("success", "アップロードが完了しました");
+        // 成功時も進捗補間をクリーンアップ
+        if (progressInterpolation) {
+            progressInterpolation = null;
+        }
     }, 1500);
 }
 
