@@ -318,20 +318,19 @@ async function handleUpload() {
                         totalBytes,
                         (displayBytes, displayPercent) => {
                             // 補間された値で UI を更新
-                            if (
-                                uploadDialogState.value.showProgressBar &&
-                                uploadDialogState.value.phase ===
-                                    "uploading_chunk"
-                            ) {
+
+                            if (uploadDialogState.value.showProgressBar) {
                                 uploadDialogState.value.bytesSent =
                                     Math.round(displayBytes);
                                 uploadDialogState.value.progressPercent =
                                     Math.round(displayPercent);
 
-                                // デバッグログ（開発時のみ有効化）
-                                // console.log(
-                                //     `[Progress Interpolation] Display: ${Math.round(displayBytes)}B (${Math.round(displayPercent)}%)`
-                                // );
+                                // デバッグログ（開発時のみ）
+                                // if (import.meta.env.DEV) {
+                                //     console.log(
+                                //         `[Progress UI] Display: ${Math.round(displayBytes)}B (${Math.round(displayPercent)}%)`,
+                                //     );
+                                // }
                             }
                         },
                     );
