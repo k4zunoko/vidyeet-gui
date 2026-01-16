@@ -126,9 +126,103 @@ const uploadDialogState = ref({
     showProgressBar: false,
 });
 
-// 進捗補間インスタンス
-let progressInterpolation: ReturnType<typeof useProgressInterpolation> | null =
-    null;
+// 進捗補間ハンドラを生成（アップロードごとに独立）
+function createUploadProgressHandler() {
+    let progressInterpolation: ReturnType<
+        typeof useProgressInterpolation
+    > | null = null;
+
+    const onProgress = (progress: UploadProgress) => {
+        // 進捗更新
+        uploadDialogState.value.phase = progress.phase;
+        uploadDialogState.value.phaseText = getPhaseText(progress.phase);
+
+        // uploading_file フェーズでプログレスバーを0%表示と補間初期化
+        // CLI仕様 v1.1: uploading_file に total_chunks が含まれるようになった
+        // Warmup モード: 第1chunk完了までの間だけ time-based で進捗を滑らかに表示
+        // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
+        if (progress.phase === "uploading_file") {
+            uploadDialogState.value.showProgressBar = true;
+            uploadDialogState.value.progressPercent = 0;
+            uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
+            uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
+
+            // 進捗補間を初期化（コールバックで UI を更新）
+            const totalBytes = progress.sizeBytes ?? 0;
+            const totalChunks = progress.totalChunks ?? 0;
+            if (totalBytes > 0) {
+                progressInterpolation = useProgressInterpolation(
+                    totalBytes,
+                    (displayBytes, displayPercent) => {
+                        // 補間された値で UI を更新
+                        if (uploadDialogState.value.showProgressBar) {
+                            uploadDialogState.value.bytesSent =
+                                Math.round(displayBytes);
+                            uploadDialogState.value.progressPercent =
+                                Math.round(displayPercent);
+                        }
+                    },
+                );
+
+                // アップロード開始時刻を記録
+                progressInterpolation.startUpload();
+
+                // Warmup モードを初期化（total_chunks 確定時）
+                if (totalChunks > 0) {
+                    progressInterpolation.initializeWarmup(totalChunks);
+                }
+            }
+        }
+
+        // uploading_chunk フェーズでプログレスバーを更新（補間適用）
+        if (
+            progress.phase === "uploading_chunk" &&
+            progress.totalBytes &&
+            progress.bytesSent !== undefined
+        ) {
+            uploadDialogState.value.showProgressBar = true;
+            uploadDialogState.value.currentChunk = progress.currentChunk ?? 0;
+            uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
+            uploadDialogState.value.totalBytes = progress.totalBytes;
+
+            // Truth（確定値）を更新（コールバックで UI が自動更新される）
+            if (progressInterpolation) {
+                progressInterpolation.updateTruth(progress.bytesSent);
+            } else {
+                // フォールバック: 補間が初期化されていない場合は直接設定
+                uploadDialogState.value.bytesSent = progress.bytesSent;
+                uploadDialogState.value.progressPercent = Math.round(
+                    (progress.bytesSent / progress.totalBytes) * 100,
+                );
+            }
+        }
+
+        // file_uploaded, waiting_for_asset, completed ではプログレスバーを100%に
+        if (
+            ["file_uploaded", "waiting_for_asset", "completed"].includes(
+                progress.phase,
+            )
+        ) {
+            if (uploadDialogState.value.showProgressBar) {
+                // 補間を停止し、100% に設定
+                if (progressInterpolation) {
+                    progressInterpolation.updateTruth(
+                        uploadDialogState.value.totalBytes,
+                    );
+                }
+                uploadDialogState.value.progressPercent = 100;
+                uploadDialogState.value.bytesSent =
+                    uploadDialogState.value.totalBytes;
+            }
+        }
+    };
+
+    const cleanup = () => {
+        progressInterpolation = null;
+    };
+
+    return { onProgress, cleanup };
+}
 
 /**
  * アップロードフェーズを日本語に変換
@@ -365,103 +459,15 @@ async function uploadDroppedFile(file: File) {
         return;
     }
 
+    const { onProgress, cleanup } = createUploadProgressHandler();
+
     // アップロード実行
-    const uploadResult = await window.vidyeet.upload(
-        { filePath },
-        (progress: UploadProgress) => {
-            // 進捗更新
-            uploadDialogState.value.phase = progress.phase;
-            uploadDialogState.value.phaseText = getPhaseText(progress.phase);
-
-            // uploading_file フェーズでプログレスバーを0%表示と補間初期化
-            // CLI仕様 v1.1: uploading_file に total_chunks が含まれるようになった
-            // Warmup モード: 第1chunk完了までの間だけ time-based で進捗を滑らかに表示
-            // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
-            if (progress.phase === "uploading_file") {
-                uploadDialogState.value.showProgressBar = true;
-                uploadDialogState.value.progressPercent = 0;
-                uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
-                uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
-
-                // 進捗補間を初期化（コールバックで UI を更新）
-                const totalBytes = progress.sizeBytes ?? 0;
-                const totalChunks = progress.totalChunks ?? 0;
-                if (totalBytes > 0) {
-                    progressInterpolation = useProgressInterpolation(
-                        totalBytes,
-                        (displayBytes, displayPercent) => {
-                            // 補間された値で UI を更新
-                            if (uploadDialogState.value.showProgressBar) {
-                                uploadDialogState.value.bytesSent =
-                                    Math.round(displayBytes);
-                                uploadDialogState.value.progressPercent =
-                                    Math.round(displayPercent);
-                            }
-                        },
-                    );
-
-                    // アップロード開始時刻を記録
-                    progressInterpolation.startUpload();
-
-                    // Warmup モードを初期化（total_chunks 確定時）
-                    if (totalChunks > 0) {
-                        progressInterpolation.initializeWarmup(totalChunks);
-                    }
-                }
-            }
-
-            // uploading_chunk フェーズでプログレスバーを更新（補間適用）
-            if (
-                progress.phase === "uploading_chunk" &&
-                progress.totalBytes &&
-                progress.bytesSent !== undefined
-            ) {
-                uploadDialogState.value.showProgressBar = true;
-                uploadDialogState.value.currentChunk =
-                    progress.currentChunk ?? 0;
-                uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
-                uploadDialogState.value.totalBytes = progress.totalBytes;
-
-                // Truth（確定値）を更新（コールバックで UI が自動更新される）
-                if (progressInterpolation) {
-                    progressInterpolation.updateTruth(progress.bytesSent);
-                } else {
-                    // フォールバック: 補間が初期化されていない場合は直接設定
-                    uploadDialogState.value.bytesSent = progress.bytesSent;
-                    uploadDialogState.value.progressPercent = Math.round(
-                        (progress.bytesSent / progress.totalBytes) * 100,
-                    );
-                }
-            }
-
-            // file_uploaded, waiting_for_asset, completed ではプログレスバーを100%に
-            if (
-                ["file_uploaded", "waiting_for_asset", "completed"].includes(
-                    progress.phase,
-                )
-            ) {
-                if (uploadDialogState.value.showProgressBar) {
-                    // 補間を停止し、100% に設定
-                    if (progressInterpolation) {
-                        progressInterpolation.updateTruth(
-                            uploadDialogState.value.totalBytes,
-                        );
-                    }
-                    uploadDialogState.value.progressPercent = 100;
-                    uploadDialogState.value.bytesSent =
-                        uploadDialogState.value.totalBytes;
-                }
-            }
-        },
-    );
+    const uploadResult = await window.vidyeet.upload({ filePath }, onProgress);
 
     if (isIpcError(uploadResult)) {
         uploadDialogState.value.isUploading = false;
         uploadDialogState.value.errorMessage = uploadResult.message;
-        // エラー時は進捗補間をクリーンアップ
-        if (progressInterpolation) {
-            progressInterpolation = null;
-        }
+        cleanup();
         return;
     }
 
@@ -478,10 +484,7 @@ async function uploadDroppedFile(file: File) {
         uploadDialogState.value.isOpen = false;
         // トースト通知を表示
         showToast("success", "アップロードが完了しました");
-        // 成功時も進捗補間をクリーンアップ
-        if (progressInterpolation) {
-            progressInterpolation = null;
-        }
+        cleanup();
     }, 1500);
 }
 
@@ -546,111 +549,18 @@ async function handleUpload() {
         showProgressBar: false,
     };
 
+    const { onProgress, cleanup } = createUploadProgressHandler();
+
     // アップロード実行
     const uploadResult = await window.vidyeet.upload(
         { filePath: selectResult.filePath },
-        (progress: UploadProgress) => {
-            // 進捗更新
-            uploadDialogState.value.phase = progress.phase;
-            uploadDialogState.value.phaseText = getPhaseText(progress.phase);
-
-            // uploading_file フェーズでプログレスバーを0%表示と補間初期化
-            // CLI仕様 v1.1: uploading_file に total_chunks が含まれるようになった
-            // Warmup モード: 第1chunk完了までの間だけ time-based で進捗を滑らかに表示
-            // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
-            if (progress.phase === "uploading_file") {
-                uploadDialogState.value.showProgressBar = true;
-                uploadDialogState.value.progressPercent = 0;
-                uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
-                uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
-
-                // 進捗補間を初期化（コールバックで UI を更新）
-                const totalBytes = progress.sizeBytes ?? 0;
-                const totalChunks = progress.totalChunks ?? 0;
-                if (totalBytes > 0) {
-                    progressInterpolation = useProgressInterpolation(
-                        totalBytes,
-                        (displayBytes, displayPercent) => {
-                            // 補間された値で UI を更新
-
-                            if (uploadDialogState.value.showProgressBar) {
-                                uploadDialogState.value.bytesSent =
-                                    Math.round(displayBytes);
-                                uploadDialogState.value.progressPercent =
-                                    Math.round(displayPercent);
-
-                                // デバッグログ（開発時のみ）
-                                // if (import.meta.env.DEV) {
-                                //     console.log(
-                                //         `[Progress UI] Display: ${Math.round(displayBytes)}B (${Math.round(displayPercent)}%)`,
-                                //     );
-                                // }
-                            }
-                        },
-                    );
-
-                    // アップロード開始時刻を記録
-                    progressInterpolation.startUpload();
-
-                    // Warmup モードを初期化（total_chunks 確定時）
-                    if (totalChunks > 0) {
-                        progressInterpolation.initializeWarmup(totalChunks);
-                    }
-                }
-            }
-
-            // uploading_chunk フェーズでプログレスバーを更新（補間適用）
-            if (
-                progress.phase === "uploading_chunk" &&
-                progress.totalBytes &&
-                progress.bytesSent !== undefined
-            ) {
-                uploadDialogState.value.showProgressBar = true;
-                uploadDialogState.value.currentChunk =
-                    progress.currentChunk ?? 0;
-                uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
-                uploadDialogState.value.totalBytes = progress.totalBytes;
-
-                // Truth（確定値）を更新（コールバックで UI が自動更新される）
-                if (progressInterpolation) {
-                    progressInterpolation.updateTruth(progress.bytesSent);
-                } else {
-                    // フォールバック: 補間が初期化されていない場合は直接設定
-                    uploadDialogState.value.bytesSent = progress.bytesSent;
-                    uploadDialogState.value.progressPercent = Math.round(
-                        (progress.bytesSent / progress.totalBytes) * 100,
-                    );
-                }
-            }
-
-            // file_uploaded, waiting_for_asset, completed ではプログレスバーを100%に
-            if (
-                ["file_uploaded", "waiting_for_asset", "completed"].includes(
-                    progress.phase,
-                )
-            ) {
-                if (uploadDialogState.value.showProgressBar) {
-                    // 補間を停止し、100% に設定
-                    if (progressInterpolation) {
-                        progressInterpolation.updateTruth(
-                            uploadDialogState.value.totalBytes,
-                        );
-                    }
-                    uploadDialogState.value.progressPercent = 100;
-                    uploadDialogState.value.bytesSent =
-                        uploadDialogState.value.totalBytes;
-                }
-            }
-        },
+        onProgress,
     );
 
     if (isIpcError(uploadResult)) {
         uploadDialogState.value.isUploading = false;
         uploadDialogState.value.errorMessage = uploadResult.message;
-        // エラー時は進捗補間をクリーンアップ
-        if (progressInterpolation) {
-            progressInterpolation = null;
-        }
+        cleanup();
         return;
     }
 
@@ -667,10 +577,7 @@ async function handleUpload() {
         uploadDialogState.value.isOpen = false;
         // トースト通知を表示
         showToast("success", "アップロードが完了しました");
-        // 成功時も進捗補間をクリーンアップ
-        if (progressInterpolation) {
-            progressInterpolation = null;
-        }
+        cleanup();
     }, 1500);
 }
 
