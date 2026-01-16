@@ -9,13 +9,6 @@
  * - 10秒以上の処理には percent-done indicator が必須
  * - 進捗表示があるとユーザーは3倍長く待てる
  * - 速度の変化はユーザーに気づかれ、満足度に影響する
- * - 推奨: 最初を遅く、後を速く（期待を超えることで満足度向上）
- *
- * ### Progressive Warmup パターン:
- * - アップロード開始直後から進捗を表示（0% で静止させない）
- * - 最初の2秒間: 0% → 1.5% へゆっくり進む（時間駆動）
- * - 最初のチャンク完了後: 実際の進捗に基づく補間へ移行
- * - 目的: 即座のフィードバックと不確実性の軽減
  *
  * ### Truth（確定値）と Display（表示値）の分離:
  * - Truth: CLI が報告した確定済み bytes（chunk 完了ベース）
@@ -113,12 +106,6 @@ export function useProgressInterpolation(
   /** 補間タイマー ID */
   let interpolationTimer: number | null = null;
 
-  /** ウォームアップタイマー ID（初期フェーズ用） */
-  let warmupTimer: number | null = null;
-
-  /** ウォームアップフェーズが完了したか */
-  const warmupCompleted = ref(false);
-
   /** 推定が停止するまでの最大待機時間（ミリ秒） */
   const MAX_INTERPOLATION_TIME = 30000; // 30秒
 
@@ -130,12 +117,6 @@ export function useProgressInterpolation(
 
   /** 補間更新の間隔（ミリ秒） */
   const INTERPOLATION_INTERVAL = 100; // 100ms = 10fps
-
-  /** ウォームアップの目標パーセンテージ（0.08 = 8%） */
-  const WARMUP_TARGET_PERCENT = 0.08; // 8%
-
-  /** ウォームアップの所要時間（ミリ秒） */
-  const WARMUP_DURATION = 2500; // 2.5秒
 
   // ==========================================================================
   // Computed Properties
@@ -189,33 +170,20 @@ export function useProgressInterpolation(
     // Ease-out カーブを適用
     const easedT = easeOutCubic(t);
 
-    // ウォームアップオフセット（チャンク進捗は 1.5% から開始）
-    const warmupOffset = totalBytes * WARMUP_TARGET_PERCENT;
-
-    // truthBytes を warmupOffset 基準にスケーリング
-    // truthBytes: 0 → totalBytes を warmupOffset → totalBytes にマッピング
-    const progressRatio = totalBytes === 0 ? 0 : truthBytes.value / totalBytes;
-    const scaledTruthBytes =
-      warmupOffset + progressRatio * (totalBytes - warmupOffset);
-
-    // 次の chunk 境界もスケーリング
+    // 次の chunk 境界までの距離
     const boundary = nextChunkBoundary.value;
-    const boundaryRatio = totalBytes === 0 ? 0 : boundary / totalBytes;
-    const scaledBoundary =
-      warmupOffset + boundaryRatio * (totalBytes - warmupOffset);
-
-    const rangeBytes = scaledBoundary - scaledTruthBytes;
+    const rangeBytes = boundary - truthBytes.value;
 
     // マージンを考慮して境界手前で停止
     const marginBytes = totalBytes * BOUNDARY_MARGIN;
-    const maxProgress = scaledBoundary - marginBytes;
+    const maxProgress = boundary - marginBytes;
 
-    // 表示値を更新（scaledTruth ≤ display < scaledBoundary - margin）
+    // 表示値を更新（truth ≤ display < boundary - margin）
     const interpolatedBytes =
-      scaledTruthBytes + rangeBytes * easedT * (1 - BOUNDARY_MARGIN);
+      truthBytes.value + rangeBytes * easedT * (1 - BOUNDARY_MARGIN);
     displayBytes.value = Math.min(
       maxProgress,
-      Math.max(scaledTruthBytes, interpolatedBytes),
+      Math.max(truthBytes.value, interpolatedBytes),
     );
 
     // コールバックで UI に通知
@@ -251,83 +219,6 @@ export function useProgressInterpolation(
     }
   }
 
-  /**
-   * ウォームアップフェーズの補間を更新
-   * アップロード開始から最初のチャンク完了までの間、
-   * 0% → WARMUP_TARGET_PERCENT へゆっくり進む
-   */
-  function updateWarmup() {
-    if (uploadStartTime.value === null) {
-      return;
-    }
-
-    const now = Date.now();
-    const elapsed = now - uploadStartTime.value;
-
-    // ウォームアップ期間内での進捗率（0.0 ~ 1.0）
-    const t = Math.min(1.0, elapsed / WARMUP_DURATION);
-
-    // Ease-out カーブを適用（最初は速く、後半で減速）
-    const easedT = easeOutCubic(t);
-
-    // 目標バイト数を計算
-    const targetBytes = totalBytes * WARMUP_TARGET_PERCENT;
-    const warmupBytes = targetBytes * easedT;
-
-    // 表示値を更新（truth を下回らないように）
-    displayBytes.value = Math.max(truthBytes.value, warmupBytes);
-
-    // DEBUG: ウォームアップの進捗をログ（開発時のみ）
-    if (import.meta.env.DEV) {
-      const percent =
-        totalBytes === 0 ? 0 : (displayBytes.value / totalBytes) * 100;
-      console.log(
-        `[Warmup] elapsed=${elapsed}ms t=${t.toFixed(3)} easedT=${easedT.toFixed(3)} percent=${percent.toFixed(3)}%`,
-      );
-    }
-
-    // コールバックで UI に通知
-    if (onUpdate) {
-      const percent =
-        totalBytes === 0
-          ? 0
-          : Math.min(100, (displayBytes.value / totalBytes) * 100);
-      onUpdate(displayBytes.value, percent);
-    }
-
-    // ウォームアップ期間が終了したら停止
-    if (t >= 1.0) {
-      stopWarmup();
-      warmupCompleted.value = true;
-      if (import.meta.env.DEV) {
-        console.log("[Warmup] Completed at 2s timeout");
-      }
-    }
-  }
-
-  /**
-   * ウォームアップタイマーを開始
-   */
-  function startWarmup() {
-    if (warmupTimer !== null || warmupCompleted.value) {
-      return;
-    }
-
-    warmupTimer = window.setInterval(() => {
-      updateWarmup();
-    }, INTERPOLATION_INTERVAL);
-  }
-
-  /**
-   * ウォームアップタイマーを停止
-   */
-  function stopWarmup() {
-    if (warmupTimer !== null) {
-      clearInterval(warmupTimer);
-      warmupTimer = null;
-    }
-  }
-
   // ==========================================================================
   // 公開 API
   // ==========================================================================
@@ -335,14 +226,11 @@ export function useProgressInterpolation(
   /**
    * アップロード開始を通知（最初のchunk送信開始時）
    *
-   * アップロード開始時刻を記録し、ウォームアップフェーズを開始する。
-   * 最初の2秒間は時間駆動で0% → 1.5%へゆっくり進み、
-   * ユーザーに即座のフィードバックを提供する。
+   * アップロード開始時刻を記録し、1個目のchunk完了時に
+   * 即座に補間を開始できるようにする
    */
   function startUpload() {
     uploadStartTime.value = Date.now();
-    warmupCompleted.value = false;
-    startWarmup();
   }
 
   /**
@@ -354,18 +242,6 @@ export function useProgressInterpolation(
    */
   function updateTruth(bytes: number) {
     const now = Date.now();
-
-    // 最初のチャンク完了時、ウォームアップを停止
-    if (warmupTimer !== null) {
-      stopWarmup();
-      warmupCompleted.value = true;
-      if (import.meta.env.DEV) {
-        const elapsed = uploadStartTime.value ? now - uploadStartTime.value : 0;
-        console.log(
-          `[Warmup] Stopped by first chunk at ${elapsed}ms, jumping to ${bytes} bytes`,
-        );
-      }
-    }
 
     // chunk 所要時間を計算（EMA で平滑化）
     if (lastChunkTime.value !== null && bytes > truthBytes.value) {
@@ -388,15 +264,9 @@ export function useProgressInterpolation(
     // Truth を更新
     truthBytes.value = bytes;
 
-    // ウォームアップオフセットを考慮してスケーリング
-    const warmupOffset = totalBytes * WARMUP_TARGET_PERCENT;
-    const progressRatio = totalBytes === 0 ? 0 : bytes / totalBytes;
-    const scaledBytes =
-      warmupOffset + progressRatio * (totalBytes - warmupOffset);
-
-    // Display が scaledBytes より小さい場合は即座に同期
-    if (displayBytes.value < scaledBytes) {
-      displayBytes.value = scaledBytes;
+    // Display が Truth より小さい場合は即座に同期
+    if (displayBytes.value < bytes) {
+      displayBytes.value = bytes;
     }
 
     // タイムスタンプを更新
@@ -429,13 +299,11 @@ export function useProgressInterpolation(
    */
   function reset() {
     stopInterpolation();
-    stopWarmup();
     truthBytes.value = 0;
     displayBytes.value = 0;
     lastChunkTime.value = null;
     uploadStartTime.value = null;
     expectedChunkDuration.value = null;
-    warmupCompleted.value = false;
   }
 
   /**
@@ -456,7 +324,6 @@ export function useProgressInterpolation(
 
   onUnmounted(() => {
     stopInterpolation();
-    stopWarmup();
   });
 
   // ==========================================================================
