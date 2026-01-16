@@ -1,0 +1,2 @@
+# Default: auto-detect text files and check them out with CRLF line endings
+* text=auto eol=crlf
