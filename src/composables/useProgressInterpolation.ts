@@ -15,7 +15,14 @@
  * - Display: Truth を下限として、次の chunk 境界まで滑らかに補間
  * - 制約: truth ≤ display < next_chunk_boundary（境界を超えない）
  *
- * ### 推定ロジック:
+ * ### Warmup モード（第1chunk完了まで）:
+ * 1. uploading_file フェーズで total_chunks 確定時に warmup 開始
+ * 2. 第1chunk完了までの間だけ time-based で display を進める
+ * 3. 漸近式: p(t) = cap * (1 - exp(-t/τ))、display = truth + min(p(t), cap)
+ * 4. cap = 第1chunk境界の75%（例: 0.75 * chunk_size）
+ * 5. 第1chunk完了イベントで warmup 終了 → 通常補間に移行
+ *
+ * ### 通常補間ロジック（第1chunk完了後）:
  * 1. 直近の chunk 所要時間から期待時間 E を計算（指数移動平均）
  * 2. 現在の chunk 内での進捗を ease-out カーブで推定
  * 3. 境界手前で自然に減速・停止（margin を残す）
@@ -119,6 +126,28 @@ export function useProgressInterpolation(
   const INTERPOLATION_INTERVAL = 100; // 100ms = 10fps
 
   // ==========================================================================
+  // Warmup モード（第1chunk完了まで）
+  // ==========================================================================
+
+  /** Warmup モード中かどうか */
+  const isWarmupMode = ref(false);
+
+  /** Warmup 開始時刻 */
+  const warmupStartTime = ref<number | null>(null);
+
+  /** Warmup の上限値（バイト数） */
+  const warmupCap = ref(0);
+
+  /** 総チャンク数（uploading_file フェーズで確定） */
+  const totalChunks = ref<number | null>(null);
+
+  /** Warmup の時定数（ミリ秒） */
+  const WARMUP_TAU = 4000;
+
+  /** Warmup の cap 係数（第1chunk境界の何%まで進めるか） */
+  const WARMUP_CAP_RATIO = 0.85;
+
+  // ==========================================================================
   // Computed Properties
   // ==========================================================================
 
@@ -139,7 +168,7 @@ export function useProgressInterpolation(
     return (
       interpolationTimer !== null &&
       truthBytes.value < totalBytes &&
-      expectedChunkDuration.value !== null
+      (expectedChunkDuration.value !== null || isWarmupMode.value)
     );
   });
 
@@ -151,11 +180,44 @@ export function useProgressInterpolation(
    * 補間を更新する（タイマーから呼ばれる）
    */
   function updateInterpolation() {
+    const now = Date.now();
+
+    // ==========================================================================
+    // Warmup モード: 第1chunk完了までの time-based 推定
+    // ==========================================================================
+    if (isWarmupMode.value && warmupStartTime.value !== null) {
+      const elapsed = now - warmupStartTime.value;
+
+      // 指数減衰式: p(t) = cap * (1 - exp(-t/τ))
+      const t = elapsed / WARMUP_TAU;
+      const progress = warmupCap.value * (1 - Math.exp(-t));
+
+      // display = truth + min(p(t), cap)
+      // 制約: display は第1chunk境界を超えない
+      displayBytes.value = Math.min(
+        warmupCap.value,
+        truthBytes.value + progress,
+      );
+
+      // コールバックで UI に通知
+      if (onUpdate) {
+        const percent =
+          totalBytes === 0
+            ? 0
+            : Math.min(100, (displayBytes.value / totalBytes) * 100);
+        onUpdate(displayBytes.value, percent);
+      }
+
+      return;
+    }
+
+    // ==========================================================================
+    // 通常モード: chunk 完了ベースの補間
+    // ==========================================================================
     if (lastChunkTime.value === null || expectedChunkDuration.value === null) {
       return;
     }
 
-    const now = Date.now();
     const elapsed = now - lastChunkTime.value;
 
     // 最大待機時間を超えたら推定を停止
@@ -234,6 +296,31 @@ export function useProgressInterpolation(
   }
 
   /**
+   * Warmup モードを初期化
+   *
+   * uploading_file フェーズで total_chunks が確定した時に呼ぶ
+   *
+   * @param chunks - 総チャンク数
+   */
+  function initializeWarmup(chunks: number) {
+    if (chunks <= 0) {
+      return;
+    }
+
+    totalChunks.value = chunks;
+
+    // Warmup の上限値 = 第1chunk境界の75%
+    warmupCap.value = Math.min(chunkSize * WARMUP_CAP_RATIO, totalBytes);
+
+    // Warmup モードを開始
+    isWarmupMode.value = true;
+    warmupStartTime.value = Date.now();
+
+    // 補間タイマーを開始
+    startInterpolation();
+  }
+
+  /**
    * Truth（確定値）を更新
    *
    * CLI から chunk 完了が報告された時に呼ぶ
@@ -243,7 +330,19 @@ export function useProgressInterpolation(
   function updateTruth(bytes: number) {
     const now = Date.now();
 
-    // chunk 所要時間を計算（EMA で平滑化）
+    // 第1chunk完了時: Warmup モードを終了
+    if (isWarmupMode.value && bytes > 0 && truthBytes.value === 0) {
+      isWarmupMode.value = false;
+      warmupStartTime.value = null;
+
+      // 第1chunkの所要時間を記録（アップロード開始時刻からの経過時間）
+      if (uploadStartTime.value !== null) {
+        const chunkDuration = now - uploadStartTime.value;
+        expectedChunkDuration.value = chunkDuration;
+      }
+    }
+
+    // 第2chunk以降: chunk 所要時間を計算（EMA で平滑化）
     if (lastChunkTime.value !== null && bytes > truthBytes.value) {
       const chunkDuration = now - lastChunkTime.value;
       expectedChunkDuration.value = calculateEma(
@@ -251,14 +350,6 @@ export function useProgressInterpolation(
         chunkDuration,
         EMA_ALPHA,
       );
-    } else if (
-      uploadStartTime.value !== null &&
-      lastChunkTime.value === null &&
-      bytes > 0
-    ) {
-      // 1個目のchunk: アップロード開始時刻からの経過時間
-      const chunkDuration = now - uploadStartTime.value;
-      expectedChunkDuration.value = chunkDuration;
     }
 
     // Truth を更新
@@ -304,6 +395,12 @@ export function useProgressInterpolation(
     lastChunkTime.value = null;
     uploadStartTime.value = null;
     expectedChunkDuration.value = null;
+
+    // Warmup 状態もリセット
+    isWarmupMode.value = false;
+    warmupStartTime.value = null;
+    warmupCap.value = 0;
+    totalChunks.value = null;
   }
 
   /**
@@ -345,6 +442,9 @@ export function useProgressInterpolation(
 
     /** アップロード開始を通知 */
     startUpload,
+
+    /** Warmup モードを初期化 */
+    initializeWarmup,
 
     /** Truth を更新 */
     updateTruth,

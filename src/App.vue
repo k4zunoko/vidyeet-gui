@@ -303,16 +303,18 @@ async function handleUpload() {
             uploadDialogState.value.phaseText = getPhaseText(progress.phase);
 
             // uploading_file フェーズでプログレスバーを0%表示と補間初期化
-            // CLI仕様: uploading_chunk はチャンク送信完了後に出力されるため、
-            // アップロード開始の視覚的フィードバックとして uploading_file で0%表示
+            // CLI仕様 v1.1: uploading_file に total_chunks が含まれるようになった
+            // Warmup モード: 第1chunk完了までの間だけ time-based で進捗を滑らかに表示
             // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
             if (progress.phase === "uploading_file") {
                 uploadDialogState.value.showProgressBar = true;
                 uploadDialogState.value.progressPercent = 0;
                 uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
+                uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
 
                 // 進捗補間を初期化（コールバックで UI を更新）
                 const totalBytes = progress.sizeBytes ?? 0;
+                const totalChunks = progress.totalChunks ?? 0;
                 if (totalBytes > 0) {
                     progressInterpolation = useProgressInterpolation(
                         totalBytes,
@@ -335,8 +337,13 @@ async function handleUpload() {
                         },
                     );
 
-                    // アップロード開始時刻を記録（1個目のchunk完了時に即座に補間開始できるようにする）
+                    // アップロード開始時刻を記録
                     progressInterpolation.startUpload();
+
+                    // Warmup モードを初期化（total_chunks 確定時）
+                    if (totalChunks > 0) {
+                        progressInterpolation.initializeWarmup(totalChunks);
+                    }
                 }
             }
 

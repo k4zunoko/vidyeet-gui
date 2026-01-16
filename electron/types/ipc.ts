@@ -121,6 +121,7 @@ export interface UploadProgress {
   percent?: number;
   /** チャンクアップロード進捗 (uploading_chunk フェーズ) */
   currentChunk?: number;
+  /** 総チャンク数 (uploading_file, uploading_chunk フェーズ) */
   totalChunks?: number;
   bytesSent?: number;
   totalBytes?: number;
