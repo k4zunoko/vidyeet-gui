@@ -19,6 +19,7 @@
 
 - 右クリックメニュー: MP4 URL の生成・コピー（クリップボード書き込みは Preload API 経由）
 - 削除/アップロードの操作とダイアログ表示
+- アップロードキュー: 複数ファイルの逐次アップロード管理（`useUploadQueue` composable）
 
 ### Preload
 
@@ -68,7 +69,9 @@
   - `features/auth/*`: 認証画面
   - `features/library/*`: 一覧とサムネイル
   - `features/player/*`: HLS再生
-  - `types/*`: 画面が必要とする最小型
+  - `composables/useUploadQueue.ts`: アップロードキュー管理
+  - `composables/useProgressInterpolation.ts`: 進捗補間（滑らかな表示）
+  - `types/*`: 画面が必要とする最小型（キューアイテム含む）
 
 ※ これは方針であり、実装時に最小の追加で進める。
 
@@ -81,6 +84,7 @@
 
 - `status/login/logout/list/delete` は共通Runner（タイムアウト/JSONパース/統一エラー）を利用
 - `upload` は進捗のストリーム処理のため別実装（将来的に共通化の余地あり）
+- 複数ファイルアップロード: Renderer側でキュー管理し、CLIは1ファイルずつ逐次実行
 
 ## 配布（CLI同梱）
 
@@ -88,3 +92,46 @@
 - 配布後は `process.resourcesPath/bin/vidyeet-cli.exe` を実行する
 
 CLI契約は [CLI_CONTRACT.md](./CLI_CONTRACT.md)、IPCは [IPC_CONTRACT.md](./IPC_CONTRACT.md) を参照。
+
+## アップロードキュー管理（Phase 1実装済み）
+
+複数ファイルのアップロードを逐次実行するキューシステム。
+
+### 設計方針
+
+- **逐次実行**: 1ファイルずつアップロード（CLIプロセスは並列実行しない）
+- **エラー継続**: 1ファイル失敗しても次のファイルを処理
+- **個別リロード**: 各ファイル成功時に一覧を更新
+- **Reactiveな状態管理**: UIとシームレスに連携
+
+### 実装箇所
+
+- `src/composables/useUploadQueue.ts`: キュー管理のcomposable
+- `src/types/app.ts`: `QueueItem`, `QueueItemStatus`, `QueueStats` 型定義
+- `src/App.vue`: キュー統合、複数ファイルハンドリング、UI表示
+
+### データフロー
+
+1. ユーザーが複数ファイルを選択（ファイル選択ダイアログまたはドラッグ&ドロップ）
+2. `useUploadQueue.enqueue()` でキューに追加
+3. `processUploadQueue()` がキューから1つ取り出し
+4. 既存の `upload` IPC呼び出しを実行（進捗補間も動作）
+5. 成功: `markCurrentCompleted()` → 一覧リロード → 次のファイル処理
+6. 失敗: `markCurrentError()` → トースト表示 → 次のファイル処理
+7. キュー完了時: 全体のトースト表示 → キューをクリア
+
+### 状態管理
+
+- `items`: キューアイテムのリスト（waiting/uploading/completed/error）
+- `currentItem`: 現在アップロード中のアイテム
+- `stats`: 統計情報（総数、待機中、完了、エラー）
+- `isProcessing`: キューが実行中かどうか
+
+### UI表示
+
+- ダイアログヘッダー: 「アップロード中 (2/5)」形式で進捗表示
+- 現在のファイル: プログレスバー + フェーズテキスト
+- 待機中リスト: ファイル名 + キャンセルボタン
+- 最小化バー: 単一ファイルは進捗率、複数ファイルは件数表示
+
+詳細は [UI_SPEC.md](./UI_SPEC.md) のアップロードダイアログセクションを参照。

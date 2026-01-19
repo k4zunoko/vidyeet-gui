@@ -12,6 +12,7 @@ import type { AppScreen, VideoItem, ToastItem, ToastType } from "./types/app";
 import type { UploadProgress } from "../electron/types/ipc";
 import { isIpcError } from "../electron/types/ipc";
 import { useProgressInterpolation } from "./composables/useProgressInterpolation";
+import { useUploadQueue } from "./composables/useUploadQueue";
 import TitleBar from "./components/TitleBar.vue";
 import SideDrawer from "./components/SideDrawer.vue";
 import VideoInfoPanel from "./components/VideoInfoPanel.vue";
@@ -126,6 +127,11 @@ const uploadDialogState = ref({
     totalBytes: 0,
     showProgressBar: false,
 });
+
+// =============================================================================
+// アップロードキュー
+// =============================================================================
+const uploadQueue = useUploadQueue();
 
 // 進捗補間ハンドラを生成（アップロードごとに独立）
 function createUploadProgressHandler() {
@@ -421,85 +427,148 @@ async function handleDrop(e: DragEvent) {
         return;
     }
 
-    // 最初のファイルのみ処理（現在は単一ファイルアップロードのみ対応）
-    const file = files[0];
+    // 動画形式チェック（複数ファイル対応）
+    const videoFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (isVideoFile(file)) {
+            videoFiles.push(file);
+        }
+    }
 
-    // 動画形式チェック
-    if (!isVideoFile(file)) {
+    if (videoFiles.length === 0) {
         showToast("error", "動画ファイルのみアップロードできます");
         return;
     }
 
-    // ファイルパスを取得してアップロード
-    await uploadDroppedFile(file);
+    // ファイルパスを取得してキューに追加
+    await handleMultipleFiles(videoFiles);
 }
 
 /**
- * ドロップされたファイルをアップロード
+ * 複数ファイルをキューに追加して処理開始
  */
-async function uploadDroppedFile(file: File) {
+async function handleMultipleFiles(files: File[]) {
     // ドロワーを閉じる
     isDrawerOpen.value = false;
 
-    // ファイル名を取得
-    const fileName = file.name;
+    // ファイルパスを取得
+    const fileItems: { filePath: string; fileName: string }[] = [];
+    for (const file of files) {
+        const filePath = (file as any).path || "";
+        if (!filePath) {
+            showToast(
+                "error",
+                `${file.name}: ファイルパスの取得に失敗しました`,
+            );
+            continue;
+        }
+        fileItems.push({
+            filePath,
+            fileName: file.name,
+        });
+    }
 
-    // アップロードダイアログを表示
-    // UX原則: ドハティの閾値 - 0.4秒以上の処理には即座にフィードバックを表示
-    uploadDialogState.value = {
-        isOpen: true,
-        isMinimized: false,
-        fileName,
-        phase: "starting",
-        phaseText: "開始中...",
-        isUploading: true,
-        errorMessage: null,
-        // プログレスバー状態をリセット
-        progressPercent: 0,
-        currentChunk: 0,
-        totalChunks: 0,
-        bytesSent: 0,
-        totalBytes: 0,
-        showProgressBar: false,
-    };
-
-    // File オブジェクトからパスを取得（Electron環境では path プロパティが利用可能）
-    const filePath = (file as any).path || "";
-
-    if (!filePath) {
-        uploadDialogState.value.isUploading = false;
-        uploadDialogState.value.errorMessage =
-            "ファイルパスの取得に失敗しました";
+    if (fileItems.length === 0) {
         return;
     }
+
+    // キューに追加
+    uploadQueue.enqueue(fileItems);
+
+    // ダイアログを開く
+    uploadDialogState.value.isOpen = true;
+    uploadDialogState.value.isMinimized = false;
+
+    // キューが処理中でなければ開始
+    if (!uploadQueue.isProcessing.value) {
+        await processUploadQueue();
+    }
+}
+
+/**
+ * アップロードキューを処理
+ */
+async function processUploadQueue() {
+    // 次のアイテムを取得
+    const item = uploadQueue.startNext();
+    if (!item) {
+        // キュー完了
+        uploadDialogState.value.isOpen = false;
+
+        const stats = uploadQueue.stats.value;
+        if (stats.completed > 0) {
+            if (stats.error > 0) {
+                showToast(
+                    "info",
+                    `${stats.completed}件完了、${stats.error}件失敗しました`,
+                );
+            } else {
+                showToast(
+                    "success",
+                    `${stats.completed}件のアップロードが完了しました`,
+                );
+            }
+        }
+
+        // キューをクリア
+        uploadQueue.clear();
+        return;
+    }
+
+    // アップロード状態を初期化
+    uploadDialogState.value.fileName = item.fileName;
+    uploadDialogState.value.phase = "starting";
+    uploadDialogState.value.phaseText = "開始中...";
+    uploadDialogState.value.isUploading = true;
+    uploadDialogState.value.errorMessage = null;
+    uploadDialogState.value.progressPercent = 0;
+    uploadDialogState.value.currentChunk = 0;
+    uploadDialogState.value.totalChunks = 0;
+    uploadDialogState.value.bytesSent = 0;
+    uploadDialogState.value.totalBytes = 0;
+    uploadDialogState.value.showProgressBar = false;
 
     const { onProgress, cleanup } = createUploadProgressHandler();
 
     // アップロード実行
-    const uploadResult = await window.vidyeet.upload({ filePath }, onProgress);
+    const uploadResult = await window.vidyeet.upload(
+        { filePath: item.filePath },
+        onProgress,
+    );
 
     if (isIpcError(uploadResult)) {
+        // エラー: キューに記録
+        uploadQueue.markCurrentError(uploadResult.message);
         uploadDialogState.value.isUploading = false;
         uploadDialogState.value.errorMessage = uploadResult.message;
         cleanup();
+
+        // エラートースト表示
+        showToast("error", `${item.fileName}: アップロード失敗`);
+
+        // 次のファイルを処理（少し待ってから）
+        setTimeout(() => {
+            processUploadQueue();
+        }, 1000);
         return;
     }
 
-    // 成功
+    // 成功: キューに記録
+    uploadQueue.markCurrentCompleted(uploadResult.assetId);
     uploadDialogState.value.phase = "completed";
     uploadDialogState.value.phaseText = "アップロード完了！";
     uploadDialogState.value.isUploading = false;
 
-    // 一覧を再読み込み
+    // 個別リロード: 成功したファイルをすぐに一覧に追加
     libraryRef.value?.reload();
 
-    // 少し待ってからダイアログを閉じる
+    cleanup();
+
+    // 次のファイルを処理（少し待ってから）
     setTimeout(() => {
-        uploadDialogState.value.isOpen = false;
-        // トースト通知を表示
-        showToast("success", "アップロードが完了しました");
-        cleanup();
-    }, 1500);
+        processUploadQueue();
+    }, 800);
 }
 
 // =============================================================================
@@ -517,23 +586,8 @@ async function handleUpload() {
     const selectResult = await window.vidyeet.selectFile();
 
     if (isIpcError(selectResult)) {
-        // エラー表示（簡易版）
-        uploadDialogState.value = {
-            isOpen: true,
-            isMinimized: false,
-            fileName: "",
-            phase: "error",
-            phaseText: "",
-            isUploading: false,
-            errorMessage: selectResult.message,
-            // プログレスバー状態をリセット
-            progressPercent: 0,
-            currentChunk: 0,
-            totalChunks: 0,
-            bytesSent: 0,
-            totalBytes: 0,
-            showProgressBar: false,
-        };
+        // エラー表示
+        showToast("error", selectResult.message);
         return;
     }
 
@@ -546,55 +600,22 @@ async function handleUpload() {
     const fileName =
         selectResult.filePath.split(/[\\/]/).pop() || selectResult.filePath;
 
-    // アップロードダイアログを表示
-    // UX原則: ドハティの閾値 - 0.4秒以上の処理には即座にフィードバックを表示
-    uploadDialogState.value = {
-        isOpen: true,
-        isMinimized: false,
-        fileName,
-        phase: "starting",
-        phaseText: "開始中...",
-        isUploading: true,
-        errorMessage: null,
-        // プログレスバー状態をリセット
-        progressPercent: 0,
-        currentChunk: 0,
-        totalChunks: 0,
-        bytesSent: 0,
-        totalBytes: 0,
-        showProgressBar: false,
-    };
+    // キューに追加
+    uploadQueue.enqueue([
+        {
+            filePath: selectResult.filePath,
+            fileName,
+        },
+    ]);
 
-    const { onProgress, cleanup } = createUploadProgressHandler();
+    // ダイアログを開く
+    uploadDialogState.value.isOpen = true;
+    uploadDialogState.value.isMinimized = false;
 
-    // アップロード実行
-    const uploadResult = await window.vidyeet.upload(
-        { filePath: selectResult.filePath },
-        onProgress,
-    );
-
-    if (isIpcError(uploadResult)) {
-        uploadDialogState.value.isUploading = false;
-        uploadDialogState.value.errorMessage = uploadResult.message;
-        cleanup();
-        return;
+    // キューが処理中でなければ開始
+    if (!uploadQueue.isProcessing.value) {
+        await processUploadQueue();
     }
-
-    // 成功
-    uploadDialogState.value.phase = "completed";
-    uploadDialogState.value.phaseText = "アップロード完了！";
-    uploadDialogState.value.isUploading = false;
-
-    // 一覧を再読み込み
-    libraryRef.value?.reload();
-
-    // 少し待ってからダイアログを閉じる
-    setTimeout(() => {
-        uploadDialogState.value.isOpen = false;
-        // トースト通知を表示
-        showToast("success", "アップロードが完了しました");
-        cleanup();
-    }, 1500);
 }
 
 /**
@@ -618,7 +639,17 @@ function closeUploadDialog() {
         uploadDialogState.value.errorMessage = null;
         uploadDialogState.value.phase = "";
         uploadDialogState.value.phaseText = "";
+
+        // キューもクリア
+        uploadQueue.clear();
     }
+}
+
+/**
+ * キュー内のアイテムをキャンセル
+ */
+function cancelQueueItem(id: number) {
+    uploadQueue.cancel(id);
 }
 
 /**
@@ -979,14 +1010,25 @@ onBeforeUnmount(() => {
                             </span>
 
                             <!-- 進捗率: エラー時は非表示（認知負荷を減らす） -->
+                            <!-- 進捗率または件数: エラー時は非表示 -->
                             <span
-                                v-if="
-                                    !uploadDialogState.errorMessage &&
-                                    uploadDialogState.isUploading
-                                "
+                                v-if="!uploadDialogState.errorMessage"
                                 class="upload-minimized-percent"
-                                >{{ uploadDialogState.progressPercent }}%</span
                             >
+                                <template
+                                    v-if="uploadQueue.stats.value.total > 1"
+                                >
+                                    {{
+                                        uploadQueue.stats.value.completed +
+                                        uploadQueue.stats.value.uploading
+                                    }}/{{ uploadQueue.stats.value.total }}
+                                </template>
+                                <template
+                                    v-else-if="uploadDialogState.isUploading"
+                                >
+                                    {{ uploadDialogState.progressPercent }}%
+                                </template>
+                            </span>
                         </div>
 
                         <!-- 通常状態: フル表示 -->
@@ -999,7 +1041,9 @@ onBeforeUnmount(() => {
                                     {{
                                         uploadDialogState.errorMessage
                                             ? "アップロードエラー"
-                                            : "アップロード中"
+                                            : uploadQueue.stats.value.total > 1
+                                              ? `アップロード中 (${uploadQueue.stats.value.completed + uploadQueue.stats.value.uploading}/${uploadQueue.stats.value.total})`
+                                              : "アップロード中"
                                     }}
                                 </h2>
                                 <div class="upload-dialog-controls">
@@ -1048,14 +1092,14 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
 
-                            <!-- エラー表示 -->
+                            <!-- 現在のファイル: エラー表示 -->
                             <template v-if="uploadDialogState.errorMessage">
                                 <p class="upload-error-message">
                                     {{ uploadDialogState.errorMessage }}
                                 </p>
                             </template>
 
-                            <!-- 進捗表示 -->
+                            <!-- 現在のファイル: 進捗表示 -->
                             <template v-else>
                                 <p class="upload-filename">
                                     {{ uploadDialogState.fileName }}
@@ -1128,6 +1172,53 @@ onBeforeUnmount(() => {
                                     {{ uploadDialogState.phaseText }}
                                 </p>
                             </template>
+
+                            <!-- キュー表示 -->
+                            <div
+                                v-if="uploadQueue.items.value.length > 1"
+                                class="upload-queue"
+                            >
+                                <div class="upload-queue-header">
+                                    <span class="upload-queue-title"
+                                        >待機中 ({{
+                                            uploadQueue.stats.value.waiting
+                                        }}件)</span
+                                    >
+                                </div>
+                                <div class="upload-queue-list">
+                                    <div
+                                        v-for="item in uploadQueue.items.value.filter(
+                                            (i) => i.status === 'waiting',
+                                        )"
+                                        :key="item.id"
+                                        class="upload-queue-item"
+                                    >
+                                        <span class="upload-queue-filename">{{
+                                            item.fileName
+                                        }}</span>
+                                        <button
+                                            class="upload-queue-cancel"
+                                            @click="cancelQueueItem(item.id)"
+                                            aria-label="キャンセル"
+                                            title="キャンセル"
+                                        >
+                                            <svg
+                                                width="12"
+                                                height="12"
+                                                viewBox="0 0 12 12"
+                                                fill="none"
+                                            >
+                                                <path
+                                                    d="M3 3l6 6M9 3l-6 6"
+                                                    stroke="currentColor"
+                                                    stroke-width="1.5"
+                                                    stroke-linecap="round"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </Transition>
@@ -1637,5 +1728,84 @@ onBeforeUnmount(() => {
     text-align: center;
     margin-top: 0.75rem;
     font-weight: 500;
+}
+
+/* アップロードキュー表示 */
+.upload-queue {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.upload-queue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.upload-queue-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.upload-queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.upload-queue-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-surface);
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.upload-queue-item:hover {
+    background: var(--color-border);
+}
+
+.upload-queue-filename {
+    flex: 1;
+    font-size: 0.8125rem;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upload-queue-cancel {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-queue-cancel:hover {
+    background: var(--color-error, #ef4444);
+    color: white;
+}
+
+.upload-queue-cancel:active {
+    transform: scale(0.95);
 }
 </style>
