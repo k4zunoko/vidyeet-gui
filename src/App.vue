@@ -864,19 +864,101 @@ onBeforeUnmount(() => {
                         aria-labelledby="upload-dialog-title"
                     >
                         <!-- 最小化状態: コンパクトバー -->
+                        <!-- UX原則: エラーは目立つ視覚的指標で表示（NN/g）、視覚的階層でエラーアイコンを最も目立たせる -->
                         <div
                             v-if="uploadDialogState.isMinimized"
                             class="upload-minimized-bar"
+                            :class="{
+                                'upload-minimized-bar--error':
+                                    uploadDialogState.errorMessage,
+                            }"
                             @click="restoreUploadDialog"
+                            :title="
+                                uploadDialogState.errorMessage
+                                    ? 'クリックして詳細を確認'
+                                    : 'クリックして展開'
+                            "
                         >
+                            <!-- エラー時: エラーアイコン -->
+                            <svg
+                                v-if="uploadDialogState.errorMessage"
+                                class="upload-minimized-icon upload-minimized-icon--error"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 20 20"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <circle
+                                    cx="10"
+                                    cy="10"
+                                    r="9"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                />
+                                <path
+                                    d="M10 6V11"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                />
+                                <circle
+                                    cx="10"
+                                    cy="14"
+                                    r="1"
+                                    fill="currentColor"
+                                />
+                            </svg>
+
+                            <!-- 進行中: スピナー -->
                             <div
+                                v-else-if="uploadDialogState.isUploading"
                                 class="upload-minimized-spinner"
-                                v-if="uploadDialogState.isUploading"
                             ></div>
-                            <span class="upload-minimized-text">{{
-                                uploadDialogState.fileName
-                            }}</span>
-                            <span class="upload-minimized-percent"
+
+                            <!-- 成功時: チェックマーク（短時間表示） -->
+                            <svg
+                                v-else-if="
+                                    uploadDialogState.phase === 'completed'
+                                "
+                                class="upload-minimized-icon upload-minimized-icon--success"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 20 20"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <circle
+                                    cx="10"
+                                    cy="10"
+                                    r="9"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                />
+                                <path
+                                    d="M6 10L8.5 12.5L14 7"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                />
+                            </svg>
+
+                            <span class="upload-minimized-text">
+                                {{
+                                    uploadDialogState.errorMessage
+                                        ? "アップロード失敗"
+                                        : uploadDialogState.fileName
+                                }}
+                            </span>
+
+                            <!-- 進捗率: エラー時は非表示（認知負荷を減らす） -->
+                            <span
+                                v-if="
+                                    !uploadDialogState.errorMessage &&
+                                    uploadDialogState.isUploading
+                                "
+                                class="upload-minimized-percent"
                                 >{{ uploadDialogState.progressPercent }}%</span
                             >
                         </div>
@@ -1298,17 +1380,29 @@ onBeforeUnmount(() => {
 }
 
 /* 最小化状態のコンパクトバー */
+/* UX原則: 視覚的階層でエラーを明確に伝える、認知負荷を最小限にする */
 .upload-minimized-bar {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: all 0.2s ease;
+    border-radius: 12px;
 }
 
 .upload-minimized-bar:hover {
     background: var(--color-surface-hover);
+}
+
+/* エラー状態: 赤系の背景で即座に認識可能（視認性） */
+.upload-minimized-bar--error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--color-error, #ef4444);
+}
+
+.upload-minimized-bar--error:hover {
+    background: rgba(239, 68, 68, 0.15);
 }
 
 .upload-minimized-spinner {
@@ -1318,6 +1412,24 @@ onBeforeUnmount(() => {
     border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+/* アイコン共通スタイル */
+.upload-minimized-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+/* エラーアイコン: 赤色で警告を明確に */
+.upload-minimized-icon--error {
+    color: var(--color-error, #ef4444);
+}
+
+/* 成功アイコン: 緑色で達成感を演出（ピーク・エンド） */
+.upload-minimized-icon--success {
+    color: var(--color-success, #22c55e);
 }
 
 .upload-minimized-text {
@@ -1329,10 +1441,17 @@ onBeforeUnmount(() => {
     text-overflow: ellipsis;
 }
 
+/* エラー時のテキストも赤色に */
+.upload-minimized-bar--error .upload-minimized-text {
+    color: var(--color-error, #ef4444);
+    font-weight: 500;
+}
+
 .upload-minimized-percent {
     font-size: 0.8125rem;
     font-weight: 600;
     color: var(--color-primary);
+    flex-shrink: 0;
 }
 
 /* スライドインアニメーション */
