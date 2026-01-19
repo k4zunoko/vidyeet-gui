@@ -1225,6 +1225,7 @@ onBeforeUnmount(() => {
     transition: width 0.1s linear;
     /* 輝きエフェクトで視覚的興味を維持 */
     position: relative;
+    overflow: hidden;
 }
 
 .upload-progress-bar-fill::after {
@@ -1232,8 +1233,8 @@ onBeforeUnmount(() => {
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
     bottom: 0;
+    width: 100px;
     background: linear-gradient(
         90deg,
         transparent 0%,
@@ -1245,10 +1246,10 @@ onBeforeUnmount(() => {
 
 @keyframes shimmer {
     0% {
-        transform: translateX(-100%);
+        transform: translateX(-100px);
     }
     100% {
-        transform: translateX(100%);
+        transform: translateX(calc(100% + 100px));
     }
 }
 
