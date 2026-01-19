@@ -112,6 +112,7 @@ function removeToast(id: number) {
 // =============================================================================
 const uploadDialogState = ref({
     isOpen: false,
+    isMinimized: false, // ノンモーダル最小化状態
     fileName: "",
     phase: "" as string,
     phaseText: "",
@@ -435,6 +436,7 @@ async function uploadDroppedFile(file: File) {
     // UX原則: ドハティの閾値 - 0.4秒以上の処理には即座にフィードバックを表示
     uploadDialogState.value = {
         isOpen: true,
+        isMinimized: false,
         fileName,
         phase: "starting",
         phaseText: "開始中...",
@@ -506,6 +508,7 @@ async function handleUpload() {
         // エラー表示（簡易版）
         uploadDialogState.value = {
             isOpen: true,
+            isMinimized: false,
             fileName: "",
             phase: "error",
             phaseText: "",
@@ -535,6 +538,7 @@ async function handleUpload() {
     // UX原則: ドハティの閾値 - 0.4秒以上の処理には即座にフィードバックを表示
     uploadDialogState.value = {
         isOpen: true,
+        isMinimized: false,
         fileName,
         phase: "starting",
         phaseText: "開始中...",
@@ -587,7 +591,23 @@ async function handleUpload() {
 function closeUploadDialog() {
     if (!uploadDialogState.value.isUploading) {
         uploadDialogState.value.isOpen = false;
+        uploadDialogState.value.isMinimized = false;
     }
+}
+
+/**
+ * アップロードダイアログを最小化
+ * UX原則: ユーザーに制御を与える (NN/g)
+ */
+function minimizeUploadDialog() {
+    uploadDialogState.value.isMinimized = true;
+}
+
+/**
+ * アップロードダイアログを復元（最小化解除）
+ */
+function restoreUploadDialog() {
+    uploadDialogState.value.isMinimized = false;
 }
 
 // =============================================================================
@@ -830,39 +850,101 @@ onBeforeUnmount(() => {
             </Teleport>
 
             <!-- アップロードダイアログ -->
+            <!-- ノンモーダル アップロード進捗ダイアログ（画面右下固定） -->
             <Teleport to="body">
-                <Transition name="dialog">
+                <Transition name="upload-slide">
                     <div
                         v-if="uploadDialogState.isOpen"
-                        class="dialog-overlay"
-                        @click.self="closeUploadDialog"
+                        class="upload-dialog-nonmodal"
+                        :class="{
+                            'upload-dialog-nonmodal--minimized':
+                                uploadDialogState.isMinimized,
+                        }"
+                        role="dialog"
+                        aria-labelledby="upload-dialog-title"
                     >
+                        <!-- 最小化状態: コンパクトバー -->
                         <div
-                            class="upload-dialog"
-                            role="dialog"
-                            aria-labelledby="upload-dialog-title"
+                            v-if="uploadDialogState.isMinimized"
+                            class="upload-minimized-bar"
+                            @click="restoreUploadDialog"
                         >
-                            <h2 id="upload-dialog-title" class="dialog-title">
-                                {{
-                                    uploadDialogState.errorMessage
-                                        ? "アップロードエラー"
-                                        : "アップロード中"
-                                }}
-                            </h2>
+                            <div
+                                class="upload-minimized-spinner"
+                                v-if="uploadDialogState.isUploading"
+                            ></div>
+                            <span class="upload-minimized-text">{{
+                                uploadDialogState.fileName
+                            }}</span>
+                            <span class="upload-minimized-percent"
+                                >{{ uploadDialogState.progressPercent }}%</span
+                            >
+                        </div>
+
+                        <!-- 通常状態: フル表示 -->
+                        <div v-else class="upload-dialog-content">
+                            <div class="upload-dialog-header">
+                                <h2
+                                    id="upload-dialog-title"
+                                    class="upload-dialog-title"
+                                >
+                                    {{
+                                        uploadDialogState.errorMessage
+                                            ? "アップロードエラー"
+                                            : "アップロード中"
+                                    }}
+                                </h2>
+                                <div class="upload-dialog-controls">
+                                    <button
+                                        v-if="!uploadDialogState.errorMessage"
+                                        class="upload-control-button"
+                                        @click="minimizeUploadDialog"
+                                        aria-label="最小化"
+                                        title="最小化"
+                                    >
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M3 8h10"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                            />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        v-if="uploadDialogState.errorMessage"
+                                        class="upload-control-button"
+                                        @click="closeUploadDialog"
+                                        aria-label="閉じる"
+                                        title="閉じる"
+                                    >
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M4 4l8 8M12 4l-8 8"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                            />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
 
                             <!-- エラー表示 -->
                             <template v-if="uploadDialogState.errorMessage">
-                                <p class="dialog-error">
+                                <p class="upload-error-message">
                                     {{ uploadDialogState.errorMessage }}
                                 </p>
-                                <div class="dialog-actions">
-                                    <button
-                                        class="dialog-button dialog-button--cancel"
-                                        @click="closeUploadDialog"
-                                    >
-                                        閉じる
-                                    </button>
-                                </div>
                             </template>
 
                             <!-- 進捗表示 -->
@@ -1039,6 +1121,7 @@ onBeforeUnmount(() => {
 /* ======================================
    削除確認ダイアログ
    ====================================== */
+/* モーダルダイアログ（削除確認など）用のオーバーレイ */
 .dialog-overlay {
     position: fixed;
     inset: 0;
@@ -1147,14 +1230,131 @@ onBeforeUnmount(() => {
     background: #dc2626;
 }
 
-/* Upload Dialog */
-.upload-dialog {
+/* ノンモーダル アップロード進捗ダイアログ */
+/* UX原則: 長時間処理はノンモーダルで、ユーザーに制御を与える (NN/g) */
+.upload-dialog-nonmodal {
+    position: fixed;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    z-index: 1000; /* タイトルバー(9000)より低く、他のコンテンツより高い */
     background: var(--color-surface);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
-    padding: 1.5rem;
-    min-width: 380px;
-    max-width: 90vw;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    min-width: 360px;
+    max-width: 90vw;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upload-dialog-nonmodal--minimized {
+    min-width: 280px;
+}
+
+.upload-dialog-content {
+    padding: 1.5rem;
+}
+
+.upload-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.upload-dialog-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.upload-dialog-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.upload-control-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.upload-control-button:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.upload-control-button:active {
+    transform: scale(0.95);
+}
+
+/* 最小化状態のコンパクトバー */
+.upload-minimized-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.upload-minimized-bar:hover {
+    background: var(--color-surface-hover);
+}
+
+.upload-minimized-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.upload-minimized-text {
+    flex: 1;
+    font-size: 0.8125rem;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.upload-minimized-percent {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+/* スライドインアニメーション */
+.upload-slide-enter-active,
+.upload-slide-leave-active {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upload-slide-enter-from,
+.upload-slide-leave-to {
+    opacity: 0;
+    transform: translateY(2rem);
+}
+
+.upload-error-message {
+    margin: 0 0 1rem;
+    padding: 0.75rem;
+    font-size: 0.8125rem;
+    color: var(--color-error, #ef4444);
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 6px;
+    line-height: 1.5;
 }
 
 .upload-filename {
@@ -1162,7 +1362,6 @@ onBeforeUnmount(() => {
     color: var(--color-text-muted);
     margin-bottom: 1rem;
     word-break: break-all;
-    text-align: center;
 }
 
 .upload-progress {
