@@ -219,7 +219,19 @@ function createUploadProgressHandler() {
     };
 
     const cleanup = () => {
-        progressInterpolation = null;
+        // 進捗補間を停止してリセット
+        if (progressInterpolation) {
+            progressInterpolation.reset();
+            progressInterpolation = null;
+        }
+
+        // uploadDialogState の進捗フィールドをリセット
+        uploadDialogState.value.progressPercent = 0;
+        uploadDialogState.value.currentChunk = 0;
+        uploadDialogState.value.totalChunks = 0;
+        uploadDialogState.value.bytesSent = 0;
+        uploadDialogState.value.totalBytes = 0;
+        uploadDialogState.value.showProgressBar = false;
     };
 
     return { onProgress, cleanup };
@@ -587,11 +599,25 @@ async function handleUpload() {
 
 /**
  * アップロードダイアログを閉じる
+ *
+ * エラー後にダイアログを閉じる際、進捗データをリセットして
+ * 次回アップロード時に前回の進捗が残らないようにする
  */
 function closeUploadDialog() {
     if (!uploadDialogState.value.isUploading) {
         uploadDialogState.value.isOpen = false;
         uploadDialogState.value.isMinimized = false;
+
+        // 進捗データをリセット（防御的プログラミング）
+        uploadDialogState.value.progressPercent = 0;
+        uploadDialogState.value.currentChunk = 0;
+        uploadDialogState.value.totalChunks = 0;
+        uploadDialogState.value.bytesSent = 0;
+        uploadDialogState.value.totalBytes = 0;
+        uploadDialogState.value.showProgressBar = false;
+        uploadDialogState.value.errorMessage = null;
+        uploadDialogState.value.phase = "";
+        uploadDialogState.value.phaseText = "";
     }
 }
 

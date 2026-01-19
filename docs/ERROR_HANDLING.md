@@ -108,3 +108,81 @@ UI:
 - "失敗しました" で終わらせず、次に押すべきボタンを提示する
 - 不確実な原因推測は避ける（断定しない）
 - 最小化状態では簡潔に（例: 「アップロード失敗」）、通常状態で詳細を表示
+
+## エラー後の状態リセット（2025-01バグ修正）
+
+### 問題
+
+エラー発生時に`progressInterpolation`のタイマーが停止されず、`uploadDialogState`の進捗フィールドがリセットされないバグがあった。
+
+**症状**:
+- エラー後に次のアップロードを開始すると、前回の進捗データ（進捗率、バイト数など）が残っている
+- `progressInterpolation`のタイマーが動作し続け、メモリリークの可能性
+- 進捗表示が正しく0%から開始されない
+
+### 原因
+
+**従来の`cleanup()`関数**:
+```typescript
+const cleanup = () => {
+    progressInterpolation = null;  // タイマーが停止されない
+};
+```
+
+問題点:
+1. `progressInterpolation`を単にnullにするだけで、内部のタイマーが停止されない
+2. `useProgressInterpolation`の`reset()`メソッドが呼ばれない
+3. `uploadDialogState`の進捗フィールドがリセットされない
+
+### 修正内容
+
+**1. `cleanup()`関数の拡張**:
+```typescript
+const cleanup = () => {
+    // 進捗補間を停止してリセット
+    if (progressInterpolation) {
+        progressInterpolation.reset();  // タイマー停止+内部状態リセット
+        progressInterpolation = null;
+    }
+
+    // uploadDialogState の進捗フィールドをリセット
+    uploadDialogState.value.progressPercent = 0;
+    uploadDialogState.value.currentChunk = 0;
+    uploadDialogState.value.totalChunks = 0;
+    uploadDialogState.value.bytesSent = 0;
+    uploadDialogState.value.totalBytes = 0;
+    uploadDialogState.value.showProgressBar = false;
+};
+```
+
+**2. `closeUploadDialog()`の防御的リセット**:
+```typescript
+function closeUploadDialog() {
+    if (!uploadDialogState.value.isUploading) {
+        uploadDialogState.value.isOpen = false;
+        uploadDialogState.value.isMinimized = false;
+
+        // 進捗データをリセット（防御的プログラミング）
+        uploadDialogState.value.progressPercent = 0;
+        uploadDialogState.value.currentChunk = 0;
+        uploadDialogState.value.totalChunks = 0;
+        uploadDialogState.value.bytesSent = 0;
+        uploadDialogState.value.totalBytes = 0;
+        uploadDialogState.value.showProgressBar = false;
+        uploadDialogState.value.errorMessage = null;
+        uploadDialogState.value.phase = "";
+        uploadDialogState.value.phaseText = "";
+    }
+}
+```
+
+### 効果
+
+- エラー後の次回アップロードで進捗が正しく0%から開始される
+- `progressInterpolation`のタイマーが適切に停止され、メモリリークが防止される
+- エラー状態（`errorMessage`, `phase`, `phaseText`）が次回アップロードに影響しない
+- 防御的プログラミング: `cleanup()`と`closeUploadDialog()`の両方でリセット
+
+### テスト方法
+
+`docs/TESTING_STRATEGY.md` の「アップロード進捗リセット（エラー後の再アップロード）」セクションを参照。

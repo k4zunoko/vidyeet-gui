@@ -20,7 +20,6 @@
 | [CLI_CONTRACT.md](./docs/CLI_CONTRACT.md) | CLI呼び出し・JSON契約 |
 | [IPC_CONTRACT.md](./docs/IPC_CONTRACT.md) | IPCチャネルと型 |
 | [ERROR_HANDLING.md](./docs/ERROR_HANDLING.md) | エラーハンドリング方針 |
-| [TESTING_STRATEGY.md](./docs/TESTING_STRATEGY.md) | テスト方針 |
 | [ROADMAP.md](./docs/ROADMAP.md) | 将来の機能追加計画 |
 | [UX_PSYCHOLOGY.md](./docs/UX_PSYCHOLOGY.md) | UI/UX設計の参考メモ（心理学的原則の要約） |
 

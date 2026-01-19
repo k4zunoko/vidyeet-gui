@@ -21,7 +21,6 @@
 ## 品質
 
 - [ERROR_HANDLING.md](./ERROR_HANDLING.md): エラー分類、UI表示、ログ、再試行
-- [TESTING_STRATEGY.md](./TESTING_STRATEGY.md): テストの層（ユニット/統合）とモック方針
 
 ## 将来
 
