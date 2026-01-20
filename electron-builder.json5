@@ -1,9 +1,9 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.vidyeet.gui",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "Vidyeet",
   "directories": {
     "output": "release/${version}"
   },
@@ -19,12 +19,7 @@
       "filter": ["**/*"]
     }
   ],
-  "mac": {
-    "target": [
-      "dmg"
-    ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
-  },
+  // Windows専用ビルド設定
   "win": {
     "target": [
       {
@@ -34,18 +29,38 @@
         ]
       }
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "${productName}-${version}-Setup.${ext}",
+    "icon": "build/icon.ico",
+    "publisherName": "vidyeet",
+    "verifyUpdateCodeSignature": false
   },
+  // NSISインストーラー詳細設定
   "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
-  },
-  "linux": {
-    "target": [
-      "AppImage"
-    ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    // インストーラーの動作設定
+    "oneClick": false,                              // カスタムインストール許可
+    "allowToChangeInstallationDirectory": true,     // インストール先変更可能
+    "perMachine": false,                            // ユーザーごとのインストール（管理者権限不要）
+    "allowElevation": true,                         // 必要に応じて管理者権限要求可能
+    "createDesktopShortcut": true,                  // デスクトップショートカット作成
+    "createStartMenuShortcut": true,                // スタートメニューショートカット作成
+    "shortcutName": "${productName}",               // ショートカット名
+
+    // アンインストール設定
+    "deleteAppDataOnUninstall": false,              // アンインストール時にAppDataを削除しない（CLIの認証情報保持）
+
+    // インストーラーの見た目
+    "installerIcon": "build/icon.ico",              // インストーラーアイコン
+    "uninstallerIcon": "build/icon.ico",            // アンインストーラーアイコン
+    "installerHeaderIcon": "build/icon.ico",        // ヘッダーアイコン
+
+    // 言語設定
+    "language": "1033",                             // 日本語（1041）または英語（1033）
+
+    // インストーラーの挙動
+    "runAfterFinish": true,                         // インストール完了後にアプリを起動
+    "menuCategory": false,                          // カテゴリなし（直接スタートメニューに配置）
+
+    // 圧縮設定
+    "differentialPackage": true                     // 差分アップデート用パッケージ生成
   }
 }

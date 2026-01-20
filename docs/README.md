@@ -17,10 +17,12 @@
 - [ARCHITECTURE.md](./ARCHITECTURE.md): レイヤ構成、データフロー、配置
 - [CLI_CONTRACT.md](./CLI_CONTRACT.md): `vidyeet-cli.exe` 呼び出し・JSON契約・エッジケース
 - [IPC_CONTRACT.md](./IPC_CONTRACT.md): Electron IPC のチャネルと型（Renderer←→Main）
+- [WINDOWS_BUILD.md](./WINDOWS_BUILD.md): Windows向けNSISインストーラーのビルド設定とガイド
 
 ## 品質
 
 - [ERROR_HANDLING.md](./ERROR_HANDLING.md): エラー分類、UI表示、ログ、再試行
+- [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md): リリース前の確認事項とビルド手順
 
 ## 将来
 

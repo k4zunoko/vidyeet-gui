@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",
+    "build:win": "vue-tsc && vite build && electron-builder --win --x64",
+    "build:dir": "vue-tsc && vite build && electron-builder --dir",
     "preview": "vite preview"
   },
   "dependencies": {
