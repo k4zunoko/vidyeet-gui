@@ -36,6 +36,7 @@ tmp-*.txt
 
 package-lock.json
 bin/*.md
-build
+build/*.md
+build/*.nsh
 
 source.mp4

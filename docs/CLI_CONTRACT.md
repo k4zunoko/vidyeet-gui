@@ -1,193 +1,710 @@
-# CLI Contract (`vidyeet-cli.exe`)
+# vidyeet-cli Machine API リファレンス
 
-本アプリは `bin/vidyeet-cli.exe` を実行して動作します。
+**バージョン**: 1.1  
+**対象**: プログラムからvidyeet-cliを呼び出す開発者向け
 
-## 実行方法
+---
 
-- 開発時: リポジトリの `bin/vidyeet-cli.exe`
-- 配布時: アプリ同梱の `bin/vidyeet-cli.exe`（パス解決はMainで吸収）
+## バージョン履歴
 
-CLI は以下の形式で呼び出す:
+### v1.1
+- **変更内容**: `uploading_file` フェーズに `total_chunks` フィールドを追加
+- **理由**: GUI実装でプログレスバーを準備する際に、総チャンク数を事前に把握できるようにするため
+- **互換性**: 非破壊的変更（フィールド追加のみ）。既存のパーサーは未知のフィールドを無視できます
+- **影響**: 厳密な型チェックを行っているクライアントは型定義の更新が必要
 
-- `vidyeet-cli.exe [--machine] <command> [args...]`
+### v1.0
+- 初版リリース
 
-GUIからは原則 `--machine` を付与し、JSONを stdout から受け取る。
+---
 
-## コマンド一覧（helpより）
+## 概要
 
-- `login` / `logout`
-- `status`
-- `list`
-- `show <asset_id>`
-- `delete <asset_id> [--force]`
-- `upload <file> [--progress]`
+`--machine`フラグを使用すると、vidyeet-cliのすべてのコマンドが機械可読なJSON形式で出力されます。このドキュメントでは、各コマンドの入出力仕様、エラーハンドリング、進捗通知の詳細を説明します。
 
-## JSON 出力（最低限の依存）
+### 主な特徴
 
-### `--machine status`
+- **構造化されたJSON出力**: すべてのコマンドが一貫したJSON形式で応答
+- **エラーの構造化**: 失敗時もJSON形式で詳細なエラー情報を提供
+- **終了コードの標準化**: エラーの種類に応じた明確な終了コード
+- **進捗通知のストリーミング**: アップロード時のリアルタイム進捗情報（JSONL形式）
+- **標準入出力の活用**: stdinからの認証情報入力、stdoutへのJSON出力
 
-想定例（実機確認済み）:
+---
 
-- `success: boolean`
-- `is_authenticated: boolean`
-- `token_id?: string`（GUIは表示しない/ログに出さない）
+## 基本的な使用方法
 
-GUIの判定は以下で行う:
+### コマンド構文
 
-- `success === true` かつ `is_authenticated === true` → 認証済み
-- それ以外 → 未認証扱い（ログイン導線）
+```powershell
+vidyeet --machine <command> [args...]
+```
 
-### `--machine list`
+**重要**: `--machine`はグローバルフラグのため、必ずコマンド名の**前**に指定してください。
 
-想定例（実機確認済み）:
+### 出力の特性
 
-- `success: boolean`
-- `data: Array<asset>`
-- 各 asset から最低限必要:
-  - `id: string`（asset id）
-  - `playback_ids: Array<{ id: string, policy?: string }>` の先頭の `id`（playback_id）
+- **成功時**: stdoutにJSON形式でレスポンスを出力（終了コード0）
+- **失敗時**: stdoutにエラーJSONを出力し、適切な終了コードで終了
+- **進捗情報**: `--progress`フラグと組み合わせると、stdoutにJSONL形式で進捗を出力
 
-GUIは以下を前提にする:
+---
 
-- `success !== true` の場合は一覧取得失敗
-- `data` が配列でない場合は契約違反として扱い、エラー表示
-- `playback_ids` が空の場合、そのassetは「再生不可」として表示（or 非表示）
+## 終了コード
 
-## `--machine delete <asset_id> --force`
+vidyeet-cliは、エラーの種類に応じて以下の終了コードを返します。
 
-- GUIは安全側に倒し、現状は常に `--force` を付与して削除を実行する
-- 破壊的操作のため、GUI側で確認ダイアログを必須にする
+| 終了コード | 分類 | 説明 | 例 |
+|----------|------|------|-----|
+| `0` | 成功 | コマンドが正常に完了 | アップロード成功、ログイン成功 |
+| `1` | ユーザーエラー | ユーザー入力や操作の問題 | ファイルが存在しない、無効なアセットID |
+| `2` | 設定エラー | 認証情報や設定の問題 | 未ログイン、認証情報が無効 |
+| `3` | システムエラー | ネットワークやAPI側の問題 | API接続失敗、タイムアウト |
 
-### 成功時JSON（想定）
+---
 
-- `success: true`
+## コマンドリファレンス
 
-### 失敗時JSON（想定）
+### 1. login - ログイン
 
-- `success: false`
-- `error: { message: string; exit_code: number; hint?: string }`
+Mux APIの認証情報を設定します。
 
-## `--machine upload <file> --progress`
+#### 構文
 
-アップロードは進捗を逐次出すため、stdout は「改行区切りの JSON ストリーム」になる。
+```powershell
+echo "$TOKEN_ID`n$TOKEN_SECRET" | vidyeet --machine login --stdin
+```
 
-GUI側の前提（現実装）:
+#### 標準入力の形式
 
-- stdout は 1行 = 1JSON とは限らないが、概ね改行区切りで進捗/完了が流れる
-- JSONとしてパースできない断片は無視して良い（部分的なバッファ分割の可能性）
-- GUI の UI 表示は要件変更により「チャンク番号のテキスト表示（例: チャンク完了: 3 / 10）」を行わないようになりました。
-  - ただし `current_chunk` / `total_chunks` が出力される場合でも内部ロジック（プログレス補間の Warmup 等）で利用します。
-  - ユーザーに見せる進捗は主に bytes ベース（`bytes_sent` / `total_bytes`）により算出されます。
+```
+<TOKEN_ID>
+<TOKEN_SECRET>
+```
 
-### 進捗行JSON（現実装が参照する形）
+**注意**: 改行で区切られた2行の入力が必要です。
 
-- `phase: { phase: string; file_name?: string; size_bytes?: number; format?: string; upload_id?: string; percent?: number; current_chunk?: number; total_chunks?: number; bytes_sent?: number; total_bytes?: number; elapsed_secs?: number }`
+#### 成功時のレスポンス
 
-GUIは `phase.phase` を表示用の状態として扱うが、表示文言（日本語）は Renderer 側でローカライズします。UI上は以下の点を注意してください:
+```json
+{
+  "success": true,
+  "command": "login",
+  "was_logged_in": false,
+  "action": "created"
+}
+```
 
-- 「チャンクのテキスト出力（X / Y）」は削除済み。ただしプログラム的なチャンク情報は継続して受け取り、補間ロジックで利用する。
-- 実ユーザーに見せる進捗は bytes ベースのパーセンテージを優先する（`bytes_sent` / `total_bytes`）。
-- 補間（Progress Interpolation）が有効な場合、表示パーセンテージは推定値となる。UI上で必要に応じて「推定値」であることを明示する文言を出す。
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`true` |
+| `command` | string | コマンド名（"login"） |
+| `was_logged_in` | boolean | 既にログイン済みだった場合`true` |
+| `action` | string | `"created"`（新規）または`"updated"`（上書き） |
 
-### 進捗フェーズの種類（説明を更新）
+#### 失敗時のレスポンス
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Login command failed",
+    "exit_code": 2,
+    "hint": "Please check your access token credentials."
+  }
+}
+```
+
+---
+
+### 2. status - ステータス確認
+
+現在の認証状態を確認します。
+
+#### 構文
+
+```powershell
+vidyeet --machine status
+```
+
+#### 成功時のレスポンス（認証済み）
+
+```json
+{
+  "success": true,
+  "command": "status",
+  "is_authenticated": true,
+  "token_id": "abc***xyz"
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`true` |
+| `command` | string | コマンド名（"status"） |
+| `is_authenticated` | boolean | 認証済みの場合`true` |
+| `token_id` | string \| null | マスキングされたToken ID（認証済みの場合） |
+
+#### 成功時のレスポンス（未認証）
+
+```json
+{
+  "success": true,
+  "command": "status",
+  "is_authenticated": false,
+  "token_id": null
+}
+```
+
+---
+
+### 3. upload - 動画アップロード
+
+動画ファイルをMuxにアップロードします。
+
+#### 構文
+
+```powershell
+vidyeet --machine upload <file_path> [--progress]
+```
+
+#### 引数
+
+- `file_path`: アップロードする動画ファイルのパス（必須）
+- `--progress`: 進捗情報をJSONL形式で出力（オプション）
+
+#### 成功時のレスポンス
+
+```json
+{
+  "success": true,
+  "command": "upload",
+  "asset_id": "abc123xyz456",
+  "playback_id": "xyz789",
+  "hls_url": "https://stream.mux.com/xyz789.m3u8",
+  "mp4_url": "https://stream.mux.com/xyz789/highest.mp4",
+  "mp4_status": "ready",
+  "file_path": "video.mp4",
+  "file_size": 10485760,
+  "file_format": "mp4",
+  "deleted_old_videos": 0
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`true` |
+| `command` | string | コマンド名（"upload"） |
+| `asset_id` | string | Muxで生成されたアセットID |
+| `playback_id` | string \| null | 再生ID（HLS/MP4のURL構築に使用） |
+| `hls_url` | string \| null | HLS再生URL（すぐに利用可能） |
+| `mp4_url` | string \| null | MP4ダウンロードURL |
+| `mp4_status` | string | MP4のステータス（`"ready"`または`"generating"`） |
+| `file_path` | string | アップロードしたファイルパス |
+| `file_size` | number | ファイルサイズ（バイト） |
+| `file_format` | string | ファイル形式（拡張子） |
+| `deleted_old_videos` | number | 削除された古い動画の数 |
+
+#### MP4ステータスの種類
+
+- `ready`: MP4がすぐに利用可能
+- `generating`: MP4がバックグラウンドで生成中（HLSは利用可能）
+
+#### 進捗通知（`--progress`指定時）
+
+`--progress`フラグを指定すると、アップロード中の進捗情報がJSONL形式（1行1JSON）でstdoutに出力されます。最終的な成功レスポンスもJSONで出力されるため、各行を個別にパースする必要があります。
+
+##### 進捗JSONの形式
+
+```json
+{"phase":"validating_file","file_path":"video.mp4"}
+{"phase":"file_validated","file_name":"video.mp4","size_bytes":10485760,"format":"mp4"}
+{"phase":"creating_direct_upload","file_name":"video.mp4"}
+{"phase":"direct_upload_created","upload_id":"abc123"}
+{"phase":"uploading_file","file_name":"video.mp4","size_bytes":10485760,"total_chunks":10}
+{"phase":"uploading_chunk","current_chunk":1,"total_chunks":10,"bytes_sent":1048576,"total_bytes":10485760}
+{"phase":"file_uploaded","file_name":"video.mp4","size_bytes":10485760}
+{"phase":"waiting_for_asset","upload_id":"abc123","elapsed_secs":5}
+{"phase":"completed","asset_id":"abc123xyz"}
+```
+
+##### 進捗フェーズの種類
 
 | フェーズ | 説明 | 追加フィールド |
 |---------|------|---------------|
 | `validating_file` | ファイル検証中 | `file_path` |
 | `file_validated` | ファイル検証完了 | `file_name`, `size_bytes`, `format` |
-| `creating_direct_upload` | アップロード準備中（アップロードURL生成等） | `file_name` |
-| `direct_upload_created` | アップロード準備完了（直接アップロード先の情報受領） | `upload_id` |
-| `uploading_file` | アップロード中（全体初期化 / Warmup） | `file_name`, `size_bytes`, `total_chunks?` |
-| `uploading_chunk` | 実データ送信中（部分的な bytes 情報を受信） | `bytes_sent`, `total_bytes`, `current_chunk?`, `total_chunks?` |
-| `file_uploaded` | ファイル送信完了（サーバ側受領済み） | `file_name`, `size_bytes` |
-| `waiting_for_asset` | Mux 側でアセット作成待ち（処理中） | `upload_id`, `elapsed_secs?` |
-| `completed` | 処理完了（アセット ID 取得） | `asset_id` |
-
-注記:
-- `uploading_file` の説明は以前の「アップロード開始/準備」から明示的に「アップロード中（初期化/ウォームアップ）」に合わせて更新されています。GUI のフェーズ文言もこれに合わせて `アップロード中...` 等に変更されています。
-- `uploading_chunk` フェーズでは、GUI は主に `bytes_sent` / `total_bytes` を参照してパーセンテージを計算します。`current_chunk` / `total_chunks` が付与される場合は補間のヒント（Warmup）として扱いますが、数値の直接的なテキスト表示は行いません。
-
-### `uploading_chunk` フェーズの詳細（GUI の扱い）
-
-GUIはこのフェーズでプログレスバーを表示する。現実装の前提:
-
-- 可能であれば `bytes_sent` と `total_bytes` を送ってください。GUIはそれらを用いて厳密なパーセンテージを算出します。
-- CLI が大きなチャンク（例: 16MB 単位）でしか報告しない場合、Renderer 側で補間（Progress Interpolation）を行い、滑らかな進捗表示を実現します。補間の詳細は docs/PROGRESS_INTERPOLATION_IMPLEMENTATION.md を参照してください。
-- `current_chunk` / `total_chunks` は補間の Warmup 初期化（最初の chunk 完了までの推定）に利用される可能性がありますが、UI に直接表示されることはありません。
-
-サンプル（1行）:
-
-{"phase":{"phase":"uploading_chunk","bytes_sent":3145728,"total_bytes":10485760}}
-
-- GUIはパーセンテージを `(bytes_sent / total_bytes) * 100` で計算し、必要に応じて補間を掛け合わせます。
-
-### 完了行JSON（現実装が参照する形）
-
-- `success: true`
-- `asset_id: string`
-
-### 失敗行JSON（現実装が参照する形）
-
-- `success: false`
-- `error: { message?: string; ... }`
-
-## 失敗時の扱い
-
-GUI側（Main）が扱うエラー源:
-
-- CLI が存在しない/起動できない
-- exit code 非0
-- stdout が JSON でない/パース不能
-- タイムアウト
-
-これらは統一したエラー型に変換し、UIは「ログインへ誘導」「再試行」「詳細表示」に収束させる。
-
-詳細は [ERROR_HANDLING.md](./ERROR_HANDLING.md)。
-
-## 標準入力（login）について
-
-CLI は `login --stdin` により、標準入力から認証情報を受け取れます。
-
-### `--machine login --stdin`
-
-- 入力フォーマット: 1行目 = Token ID / 2行目 = Token Secret
-
-例（PowerShell 表記等は説明書きのため省略）:
-
-    echo -e "your-token-id\nyour-token-secret" | vidyeet-cli --machine login --stdin
-
-GUIとしては、ユーザー入力（または開発時は環境変数）を受け取り、Main process で stdin に流し込む方式で不足ありません。
-
-### 成功時JSON（実機確認済み）
-
-- `command: "login"`
-- `success: true`
-
-### 失敗時JSON（実機確認済み）
-
-失敗時も `--machine` 指定なら stdout にJSONを返します。
-
-- `success: false`
-- `error: { message: string; exit_code: number; hint?: string }`
-
-`--machine` 指定時は stderr に人間向けエラーを出さない前提で実装します（ノイズがある場合はCLI側の契約違反として扱う）。
-
-## `.env` について（開発用）
-
-開発時に `MUX_TOKEN_ID` / `MUX_TOKEN_SECRET` を `.env` に置く運用は可能ですが、秘密情報のため必ずGit管理から除外します（本リポジトリは `.gitignore` で除外済み）。
-
-## URL 生成（Mux）
-
-`playback_id` からURLを生成する。
-
-- Thumbnail: `https://image.mux.com/{PLAYBACK_ID}/thumbnail.jpg?width=320`
-- GIF: `https://image.mux.com/{PLAYBACK_ID}/animated.gif?width=320`
-- HLS: `https://stream.mux.com/{PLAYBACK_ID}.m3u8`
-- MP4: `https://stream.mux.com/{PLAYBACK_ID}/highest.mp4`
-
-この生成ロジックは Renderer 側に置くが、ドメインやパス形式が変わった時に差し替えやすいよう、定数/ヘルパに閉じ込める。
+| `creating_direct_upload` | アップロードURL作成中 | `file_name` |
+| `direct_upload_created` | アップロードURL作成完了 | `upload_id` |
+| `uploading_file` | アップロード開始 | `file_name`, `size_bytes`, `total_chunks` |
+| `uploading_chunk` | チャンクアップロード中 | `current_chunk`, `total_chunks`, `bytes_sent`, `total_bytes` |
+| `file_uploaded` | アップロード完了 | `file_name`, `size_bytes` |
+| `waiting_for_asset` | アセット作成待機中 | `upload_id`, `elapsed_secs` |
+| `completed` | 処理完了 | `asset_id` |
 
 ---
-補足:
-- 本ドキュメントは Renderer 側の表示ロジック（UX）変更に合わせて更新されています。特に「チャンク番号のテキスト表示」は削除され、進捗は主に bytes ベースで扱われることに注意してください。
-- 実装者は CLI の進捗出力が bytes 情報を含むよう配慮すると、GUI 側の正確な表示と補間が容易になります。
+
+### 4. list - 動画一覧取得
+
+アップロード済みの動画一覧を取得します。
+
+#### 構文
+
+```powershell
+vidyeet --machine list
+```
+
+#### 成功時のレスポンス
+
+```json
+{
+  "success": true,
+  "command": "list",
+  "data": [
+    {
+      "id": "asset_abc123",
+      "status": "ready",
+      "playback_ids": [
+        {
+          "id": "xyz789",
+          "policy": "public"
+        }
+      ],
+      "duration": 123.45,
+      "created_at": "1609459200",
+      "aspect_ratio": "16:9",
+      "video_quality": "basic",
+      "resolution_tier": "1080p",
+      "encoding_tier": "baseline",
+      "tracks": [
+        {
+          "type": "video",
+          "id": "track_001",
+          "duration": 123.45,
+          "max_width": 1920,
+          "max_height": 1080,
+          "max_frame_rate": 30.0
+        },
+        {
+          "type": "audio",
+          "id": "track_002",
+          "duration": 123.45,
+          "max_channels": 2,
+          "max_channel_layout": "stereo"
+        }
+      ],
+      "static_renditions": {
+        "files": [
+          {
+            "id": "rendition_001",
+            "type": "standard",
+            "status": "ready",
+            "resolution": "highest",
+            "name": "highest.mp4",
+            "ext": "mp4"
+          }
+        ]
+      }
+    }
+  ],
+  "total_count": 1
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`true` |
+| `command` | string | コマンド名（"list"） |
+| `data` | array | 完全なMux API Asset配列（[AssetData](#assetdata-構造)の配列） |
+| `total_count` | number | 動画の総数 |
+
+---
+
+### 5. show - 動画詳細表示
+
+指定したアセットIDの詳細情報を取得します。
+
+#### 構文
+
+```powershell
+vidyeet --machine show <asset_id>
+```
+
+#### 成功時のレスポンス
+
+```json
+{
+  "success": true,
+  "command": "show",
+  "data": {
+    "id": "asset_abc123",
+    "status": "ready",
+    "playback_ids": [
+      {
+        "id": "xyz789",
+        "policy": "public"
+      }
+    ],
+    "duration": 123.45,
+    "created_at": "1609459200",
+    "updated_at": "1609459300",
+    "aspect_ratio": "16:9",
+    "video_quality": "basic",
+    "resolution_tier": "1080p",
+    "encoding_tier": "baseline",
+    "max_stored_frame_rate": 30.0,
+    "tracks": [
+      {
+        "type": "video",
+        "id": "track_001",
+        "duration": 123.45,
+        "max_width": 1920,
+        "max_height": 1080,
+        "max_frame_rate": 30.0
+      }
+    ],
+    "static_renditions": {
+      "files": [
+        {
+          "id": "rendition_001",
+          "type": "standard",
+          "status": "ready",
+          "resolution": "highest",
+          "name": "highest.mp4",
+          "ext": "mp4"
+        }
+      ]
+    }
+  }
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`true` |
+| `command` | string | コマンド名（"show"） |
+| `data` | object | 完全なMux API Asset情報（[AssetData](#assetdata-構造)） |
+
+---
+
+### 6. delete - 動画削除
+
+指定したアセットIDの動画を削除します。
+
+#### 構文
+
+```powershell
+vidyeet --machine delete <asset_id> --force
+```
+
+**注意**: `--machine`モードでは確認プロンプトが表示されないため、`--force`フラグは不要ですが、明示的に指定することを推奨します。
+
+#### 成功時のレスポンス
+
+```json
+{
+  "success": true,
+  "command": "delete",
+  "asset_id": "asset_abc123"
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`true` |
+| `command` | string | コマンド名（"delete"） |
+| `asset_id` | string | 削除されたアセットID |
+
+---
+
+### 7. logout - ログアウト
+
+認証情報を削除します。
+
+#### 構文
+
+```powershell
+vidyeet --machine logout
+```
+
+#### 成功時のレスポンス
+
+```json
+{
+  "success": true,
+  "command": "logout",
+  "was_logged_in": true
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`true` |
+| `command` | string | コマンド名（"logout"） |
+| `was_logged_in` | boolean | ログイン済み状態だった場合`true` |
+
+---
+
+## データ構造リファレンス
+
+### AssetData 構造
+
+`list`および`show`コマンドの`data`フィールドで返される完全なMux API Asset情報。
+
+#### 基本フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `id` | string | アセットID |
+| `status` | string | ステータス（`preparing`, `ready`, `errored`） |
+| `playback_ids` | array | 再生ID配列（[PlaybackId](#playbackid-構造)） |
+| `duration` | number \| null | 動画時間（秒） |
+| `created_at` | string | 作成日時（Unix timestamp文字列） |
+| `updated_at` | string \| null | 更新日時（Unix timestamp文字列） |
+| `aspect_ratio` | string \| null | アスペクト比（例: "16:9"） |
+| `video_quality` | string \| null | ビデオ品質（`basic`, `plus`など） |
+
+#### 解像度・品質関連フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `resolution_tier` | string \| null | 解像度ティア（`1080p`, `720p`, `540p`, `360p`など） |
+| `max_stored_resolution` | string \| null | 最大保存解像度（非推奨: `resolution_tier`を使用） |
+| `max_stored_frame_rate` | number \| null | 最大保存フレームレート |
+| `max_resolution_tier` | string \| null | 最大解像度ティア |
+
+#### エンコーディング関連フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `encoding_tier` | string \| null | エンコーディングティア（`baseline`, `smart`など） |
+| `master_access` | string \| null | マスターファイルアクセス（`none`, `temporary`など） |
+
+#### その他のフィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `passthrough` | string \| null | カスタムメタデータ（最大255文字） |
+| `tracks` | array \| null | トラック情報配列（[Track](#track-構造)） |
+| `static_renditions` | object \| null | Static Renditions（[StaticRenditionsWrapper](#staticrenditionswrapper-構造)） |
+
+### PlaybackId 構造
+
+```json
+{
+  "id": "xyz789",
+  "policy": "public"
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `id` | string | 再生ID（HLS/MP4のURL構築に使用） |
+| `policy` | string | 再生ポリシー（`public`, `signed`など） |
+
+**URL構築例**:
+- HLS: `https://stream.mux.com/{playback_id}.m3u8`
+- MP4: `https://stream.mux.com/{playback_id}/highest.mp4`
+
+### Track 構造
+
+```json
+{
+  "type": "video",
+  "id": "track_001",
+  "duration": 123.45,
+  "max_width": 1920,
+  "max_height": 1080,
+  "max_frame_rate": 30.0
+}
+```
+
+#### 共通フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `type` | string | トラックタイプ（`video`, `audio`） |
+| `id` | string \| null | トラックID |
+| `duration` | number \| null | トラック時間（秒） |
+
+#### ビデオトラック専用フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `max_width` | number \| null | 最大幅（ピクセル） |
+| `max_height` | number \| null | 最大高さ（ピクセル） |
+| `max_frame_rate` | number \| null | 最大フレームレート |
+
+#### オーディオトラック専用フィールド
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `max_channels` | number \| null | 最大チャンネル数 |
+| `max_channel_layout` | string \| null | 最大チャンネルレイアウト（例: `stereo`） |
+
+### StaticRenditionsWrapper 構造
+
+```json
+{
+  "files": [
+    {
+      "id": "rendition_001",
+      "type": "standard",
+      "status": "ready",
+      "resolution": "highest",
+      "name": "highest.mp4",
+      "ext": "mp4"
+    }
+  ]
+}
+```
+
+#### StaticRendition 構造
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `id` | string | Rendition ID |
+| `type` | string | Renditionタイプ（例: `standard`） |
+| `status` | string | ステータス（`preparing`, `ready`, `errored`, `skipped`, `deleted`） |
+| `resolution` | string | 解像度（`highest`, `1080p`, `720p`など） |
+| `name` | string | ファイル名（例: `highest.mp4`） |
+| `ext` | string | ファイル拡張子（例: `mp4`, `m4a`） |
+
+---
+
+## エラーハンドリング
+
+すべてのコマンドは、失敗時に以下の形式のJSONを出力します。
+
+### エラーレスポンス形式
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Upload command failed",
+    "exit_code": 1,
+    "hint": "Please check that the file exists and is accessible."
+  }
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `success` | boolean | 常に`false` |
+| `error.message` | string | エラーメッセージ |
+| `error.exit_code` | number | 終了コード（1, 2, 3） |
+| `error.hint` | string \| null | ユーザー向けのヒント（ある場合） |
+
+### エラータイプ別の例
+
+#### ユーザーエラー（終了コード: 1）
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Upload command failed",
+    "exit_code": 1,
+    "hint": "Please check that the file exists and is accessible."
+  }
+}
+```
+
+**原因例**:
+- ファイルが存在しない
+- 無効なアセットID
+- ファイル形式が不正
+
+#### 設定エラー（終了コード: 2）
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "List command failed",
+    "exit_code": 2,
+    "hint": "Please run 'vidyeet login' to authenticate with Mux Video."
+  }
+}
+```
+
+**原因例**:
+- 未ログイン状態
+- 認証情報が無効
+- 設定ファイルが破損
+
+#### システムエラー（終了コード: 3）
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Upload command failed",
+    "exit_code": 3,
+    "hint": null
+  }
+}
+```
+
+**原因例**:
+- ネットワーク接続エラー
+- APIサーバーがダウン
+- タイムアウト
+
+---
+
+## 設計上の注意事項
+
+### 出力の一貫性
+
+- 成功時・失敗時ともに**必ずJSON形式**で出力
+- `success`フィールドで成功・失敗を判定可能
+- 終了コードとJSONの両方でエラーを表現
+
+### 標準入出力の使い分け
+
+- **stdout**: JSON出力（結果・進捗）
+- **stderr**: （--machine時は使用しない）
+- **stdin**: 認証情報の入力（`login --stdin`）
+
+### 進捗通知の設計
+
+- **JSONL形式**（JSON Lines）: 1行1JSONで逐次処理可能
+- 最終行に成功レスポンスが含まれる
+- `--progress`フラグがない場合は進捗出力なし
+
+### APIデータの完全性
+
+- `--machine`モードでは、`list`と`show`コマンドが**Mux APIの完全なレスポンス**を返す
+- 通常モードでは人間向けに簡略化されたデータのみ
+- `resolution_tier`, `encoding_tier`, `tracks`などの詳細情報にアクセス可能
+
+---
+
+## バージョン互換性
+
+### 現在のバージョン: 1.0
+
+#### 保証される互換性
+
+- JSON出力の基本構造（`success`, `command`フィールド）
+- 終了コードの定義（0, 1, 2, 3）
+- エラーレスポンスの構造
+
+#### 将来追加される可能性のあるフィールド
+
+- Mux APIの新機能に対応したフィールド
+- 進捗フェーズの追加
+- 統計情報フィールド
+
+**推奨事項**: JSONパース時は、未知のフィールドを無視するように実装してください。
+
+---
+
+**関連ドキュメント**:
+- [README.md](../README.md) - 一般ユーザー向けドキュメント
+- [Mux API Documentation](https://docs.mux.com/api-reference) - Mux公式APIリファレンス
+
+**サポート**:
+- GitHub Issues: [https://github.com/k4zunoko/vidyeet-cli/issues](https://github.com/k4zunoko/vidyeet-cli/issues)
