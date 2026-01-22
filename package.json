@@ -2,13 +2,12 @@
   "name": "vidyeet-gui",
   "displayName": "Vidyeet",
   "productName": "Vidyeet",
-  "description": "Mux API のGUIラッパー。動画の安全・快適なアップロード・管理",
+  "description": "Safe and Convenient Video Uploading and Management.",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "author": {
-    "name": "Vidyeet Team",
-    "email": "contact@vidyeet.dev"
+    "name": "Vidyeet Team"
   },
   "license": "MIT",
   "repository": {
