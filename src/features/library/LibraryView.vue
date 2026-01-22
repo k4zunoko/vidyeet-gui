@@ -118,7 +118,7 @@ onMounted(() => {
         role="button"
         aria-label="動画をアップロード"
         @click="handleUploadClick"
-        @keydown.enter="handleUploadClick"
+        @keydown.enter.prevent="handleUploadClick"
         @keydown.space.prevent="handleUploadClick"
       >
         <div class="upload-icon-container">
