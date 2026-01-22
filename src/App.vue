@@ -14,7 +14,7 @@ import { isIpcError } from "../electron/types/ipc";
 import { useProgressInterpolation } from "./composables/useProgressInterpolation";
 import { useUploadQueue } from "./composables/useUploadQueue";
 import TitleBar from "./components/TitleBar.vue";
-import SideDrawer from "./components/SideDrawer.vue";
+import SettingsModal from "./components/SettingsModal.vue";
 import VideoInfoPanel from "./components/VideoInfoPanel.vue";
 import VideoContextMenu from "./components/VideoContextMenu.vue";
 import ToastNotification from "./components/ToastNotification.vue";
@@ -32,8 +32,8 @@ const selectedVideo = ref<VideoItem | null>(null);
 // 初期化エラー
 const initError = ref<string | null>(null);
 
-// ドロワー表示状態
-const isDrawerOpen = ref(false);
+// 設定モーダル表示状態
+const isSettingsOpen = ref(false);
 
 // LibraryViewへの参照（reload用）
 const libraryRef = ref<InstanceType<typeof LibraryView> | null>(null);
@@ -322,7 +322,7 @@ async function handleLogout() {
     }
     selectedVideo.value = null;
     currentScreen.value = "login";
-    isDrawerOpen.value = false;
+    isSettingsOpen.value = false;
 }
 
 /**
@@ -340,17 +340,17 @@ function handleReload() {
 }
 
 /**
- * メニュー開閉
+ * 設定画面を開く
  */
-function toggleDrawer() {
-    isDrawerOpen.value = !isDrawerOpen.value;
+function openSettings() {
+    isSettingsOpen.value = true;
 }
 
 /**
- * ドロワーを閉じる
+ * 設定画面を閉じる
  */
-function closeDrawer() {
-    isDrawerOpen.value = false;
+function closeSettings() {
+    isSettingsOpen.value = false;
 }
 
 // =============================================================================
@@ -449,9 +449,6 @@ async function handleDrop(e: DragEvent) {
  * 複数ファイルをキューに追加して処理開始
  */
 async function handleMultipleFiles(files: File[]) {
-    // ドロワーを閉じる
-    isDrawerOpen.value = false;
-
     // ファイルパスを取得
     const fileItems: { filePath: string; fileName: string }[] = [];
     for (const file of files) {
@@ -577,46 +574,44 @@ async function processUploadQueue() {
 
 /**
  * アップロードを開始
+ * 注: 現在この関数は使用されていません。将来的にアップロードボタンを別の場所に配置する際に使用します。
  */
-async function handleUpload() {
-    // ドロワーを閉じる
-    isDrawerOpen.value = false;
+// async function handleUpload() {
+//     // ファイル選択ダイアログを表示
+//     const selectResult = await window.vidyeet.selectFile();
 
-    // ファイル選択ダイアログを表示
-    const selectResult = await window.vidyeet.selectFile();
+//     if (isIpcError(selectResult)) {
+//         // エラー表示
+//         showToast("error", selectResult.message);
+//         return;
+//     }
 
-    if (isIpcError(selectResult)) {
-        // エラー表示
-        showToast("error", selectResult.message);
-        return;
-    }
+//     // キャンセルされた場合
+//     if (!selectResult.filePath) {
+//         return;
+//     }
 
-    // キャンセルされた場合
-    if (!selectResult.filePath) {
-        return;
-    }
+//     // ファイル名を取得
+//     const fileName =
+//         selectResult.filePath.split(/[\\/]/).pop() || selectResult.filePath;
 
-    // ファイル名を取得
-    const fileName =
-        selectResult.filePath.split(/[\\/]/).pop() || selectResult.filePath;
+//     // キューに追加
+//     uploadQueue.enqueue([
+//         {
+//             filePath: selectResult.filePath,
+//             fileName,
+//         },
+//     ]);
 
-    // キューに追加
-    uploadQueue.enqueue([
-        {
-            filePath: selectResult.filePath,
-            fileName,
-        },
-    ]);
+//     // ダイアログを開く
+//     uploadDialogState.value.isOpen = true;
+//     uploadDialogState.value.isMinimized = false;
 
-    // ダイアログを開く
-    uploadDialogState.value.isOpen = true;
-    uploadDialogState.value.isMinimized = false;
-
-    // キューが処理中でなければ開始
-    if (!uploadQueue.isProcessing.value) {
-        await processUploadQueue();
-    }
-}
+//     // キューが処理中でなければ開始
+//     if (!uploadQueue.isProcessing.value) {
+//         await processUploadQueue();
+//     }
+// }
 
 /**
  * アップロードダイアログを閉じる
@@ -787,9 +782,9 @@ onBeforeUnmount(() => {
         <!-- カスタムタイトルバー -->
         <TitleBar
             :show-reload="currentScreen === 'library'"
-            :show-menu="currentScreen === 'library'"
+            :show-settings="currentScreen === 'library'"
             @reload="handleReload"
-            @toggle-menu="toggleDrawer"
+            @open-settings="openSettings"
         />
 
         <!-- メインコンテンツ領域（タイトルバー分の高さを引く） -->
@@ -835,11 +830,10 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- ドロワー -->
-            <SideDrawer
-                :is-open="isDrawerOpen"
-                @close="closeDrawer"
-                @upload="handleUpload"
+            <!-- 設定モーダル -->
+            <SettingsModal
+                :is-open="isSettingsOpen"
+                @close="closeSettings"
                 @logout="handleLogout"
             />
 
