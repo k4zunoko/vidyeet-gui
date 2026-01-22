@@ -27,6 +27,9 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win: BrowserWindow | null
 
 function createWindow() {
+  // アプリケーション名を設定
+  app.name = 'Vidyeet'
+
   win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -34,6 +37,7 @@ function createWindow() {
     minHeight: 600,
     frame: false, // フレームレス
     titleBarStyle: 'hidden',
+    title: 'Vidyeet', // ウィンドウタイトル
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
@@ -170,4 +174,22 @@ ipcMain.handle('window:close', () => {
  */
 ipcMain.handle('window:isMaximized', () => {
   return win?.isMaximized() ?? false
+})
+
+// =============================================================================
+// Application Info IPC Handler
+// =============================================================================
+
+/**
+ * app:getVersion - アプリケーションのバージョンと情報を取得
+ */
+ipcMain.handle('app:getVersion', () => {
+  return {
+    version: app.getVersion(),
+    appName: 'Vidyeet',
+    description: 'Mux API のGUIラッパー。動画の安全・快適なアップロード・管理',
+    author: 'Vidyeet Team',
+    license: 'MIT',
+    repository: 'https://github.com/k4zunoko/vidyeet-gui',
+  }
 })

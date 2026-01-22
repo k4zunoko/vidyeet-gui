@@ -1,8 +1,20 @@
 {
   "name": "vidyeet-gui",
+  "displayName": "Vidyeet",
+  "productName": "Vidyeet",
+  "description": "Mux API のGUIラッパー。動画の安全・快適なアップロード・管理",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "author": {
+    "name": "Vidyeet Team",
+    "email": "contact@vidyeet.dev"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/k4zunoko/vidyeet-gui.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && electron-builder",

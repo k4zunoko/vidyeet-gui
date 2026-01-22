@@ -188,3 +188,18 @@ export interface WindowApi {
   close(): Promise<void>;
   isMaximized(): Promise<boolean>;
 }
+
+/** アプリケーション情報 */
+export interface AppInfo {
+  version: string;
+  appName: string;
+  description: string;
+  author: string;
+  license: string;
+  repository: string;
+}
+
+/** アプリケーション情報API */
+export interface AppApi {
+  getVersion(): Promise<AppInfo>;
+}

@@ -54,7 +54,7 @@
     "installerHeaderIcon": "build/icon.ico",        // ヘッダーアイコン
 
     // 言語設定
-    "language": "1033",                             // 日本語（1041）または英語（1033）
+    "language": "1041",                             // 日本語（1041）または英語（1033）
 
     // インストーラーの挙動
     "runAfterFinish": true,                         // インストール完了後にアプリを起動

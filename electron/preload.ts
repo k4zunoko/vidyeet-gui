@@ -121,6 +121,21 @@ const windowApi: WindowApi = {
 contextBridge.exposeInMainWorld('windowControl', windowApi)
 
 // =============================================================================
+// Application Info API
+// =============================================================================
+
+/**
+ * アプリケーション情報API - window.app として公開
+ */
+const appApi = {
+  async getVersion() {
+    return await ipcRenderer.invoke('app:getVersion')
+  },
+}
+
+contextBridge.exposeInMainWorld('app', appApi)
+
+// =============================================================================
 // Legacy ipcRenderer API (for backward compatibility)
 // =============================================================================
 
