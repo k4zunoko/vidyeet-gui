@@ -574,44 +574,43 @@ async function processUploadQueue() {
 
 /**
  * アップロードを開始
- * 注: 現在この関数は使用されていません。将来的にアップロードボタンを別の場所に配置する際に使用します。
  */
-// async function handleUpload() {
-//     // ファイル選択ダイアログを表示
-//     const selectResult = await window.vidyeet.selectFile();
+async function handleUpload() {
+    // ファイル選択ダイアログを表示
+    const selectResult = await window.vidyeet.selectFile();
 
-//     if (isIpcError(selectResult)) {
-//         // エラー表示
-//         showToast("error", selectResult.message);
-//         return;
-//     }
+    if (isIpcError(selectResult)) {
+        // エラー表示
+        showToast("error", selectResult.message);
+        return;
+    }
 
-//     // キャンセルされた場合
-//     if (!selectResult.filePath) {
-//         return;
-//     }
+    // キャンセルされた場合
+    if (!selectResult.filePath) {
+        return;
+    }
 
-//     // ファイル名を取得
-//     const fileName =
-//         selectResult.filePath.split(/[\\/]/).pop() || selectResult.filePath;
+    // ファイル名を取得
+    const fileName =
+        selectResult.filePath.split(/[\\/]/).pop() || selectResult.filePath;
 
-//     // キューに追加
-//     uploadQueue.enqueue([
-//         {
-//             filePath: selectResult.filePath,
-//             fileName,
-//         },
-//     ]);
+    // キューに追加
+    uploadQueue.enqueue([
+        {
+            filePath: selectResult.filePath,
+            fileName,
+        },
+    ]);
 
-//     // ダイアログを開く
-//     uploadDialogState.value.isOpen = true;
-//     uploadDialogState.value.isMinimized = false;
+    // ダイアログを開く
+    uploadDialogState.value.isOpen = true;
+    uploadDialogState.value.isMinimized = false;
 
-//     // キューが処理中でなければ開始
-//     if (!uploadQueue.isProcessing.value) {
-//         await processUploadQueue();
-//     }
-// }
+    // キューが処理中でなければ開始
+    if (!uploadQueue.isProcessing.value) {
+        await processUploadQueue();
+    }
+}
 
 /**
  * アップロードダイアログを閉じる
@@ -815,6 +814,7 @@ onBeforeUnmount(() => {
                         :selected-video="selectedVideo"
                         @select="handleSelectVideo"
                         @contextmenu="showContextMenu"
+                        @upload="handleUpload"
                     />
                 </aside>
 

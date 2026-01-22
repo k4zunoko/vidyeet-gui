@@ -20,6 +20,8 @@ const emit = defineEmits<{
   select: [video: VideoItem];
   /** コンテキストメニュー表示要求 */
   contextmenu: [event: MouseEvent, video: VideoItem];
+  /** アップロードボタンクリック */
+  upload: [];
 }>();
 
 // 動画一覧
@@ -91,6 +93,13 @@ function reload() {
   fetchVideos();
 }
 
+/**
+ * アップロードボタンクリック
+ */
+function handleUploadClick() {
+  emit('upload');
+}
+
 // 外部から呼び出せるように公開
 defineExpose({ reload, removeVideo });
 
@@ -103,6 +112,23 @@ onMounted(() => {
   <div class="library-container">
     <!-- コンテンツ -->
     <main class="library-content">
+      <!-- アップロードボタン -->
+      <button 
+        class="upload-button"
+        role="button"
+        aria-label="動画をアップロード"
+        @click="handleUploadClick"
+        @keydown.enter="handleUploadClick"
+        @keydown.space.prevent="handleUploadClick"
+      >
+        <div class="upload-icon-container">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="upload-text">動画をアップロード</span>
+        </div>
+      </button>
+
       <!-- ローディング -->
       <div v-if="isLoading" class="loading-state">
         <div class="loading-grid">
@@ -152,6 +178,70 @@ onMounted(() => {
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+}
+
+/* アップロードボタン */
+.upload-button {
+  /* VideoCardと同じ16:9比率 */
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  
+  /* 視覚的に区別 */
+  background: var(--color-surface);
+  border: 2px dashed var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  
+  /* レイアウト */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* 余白 */
+  margin-bottom: 0.75rem;
+  
+  /* トランジション */
+  transition: 
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upload-button:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 42, 130, 0.2);
+}
+
+.upload-button:active {
+  transform: translateY(-1px);
+}
+
+.upload-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.upload-icon-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.upload-icon {
+  width: 40px;
+  height: 40px;
+  color: var(--color-primary);
+  stroke-width: 2;
+}
+
+.upload-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
 }
 
 /* ローディング */
