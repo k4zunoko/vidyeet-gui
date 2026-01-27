@@ -1,0 +1,25 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build and publish
+        run: npm run build:win -- --publish=onTag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify update metadata
+        run: powershell -NoProfile -Command "if (-not (Test-Path 'release/*/latest.yml')) { Write-Error 'latest.yml not found' }"
