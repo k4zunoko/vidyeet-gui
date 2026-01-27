@@ -1,8 +1,17 @@
 import { app, BrowserWindow, ipcMain, clipboard } from "electron";
+import log from "electron-log/main";
+import {
+  autoUpdater,
+  type UpdateDownloadedEvent,
+  type UpdateInfo,
+  type ProgressInfo,
+} from "electron-updater";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
   IpcChannels,
+  type IpcError,
+  type UpdateStatusPayload,
   type LoginRequest,
   type DeleteRequest,
   type UploadRequest,
@@ -41,6 +50,53 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null;
+
+function sendUpdateStatus(payload: UpdateStatusPayload) {
+  win?.webContents.send(IpcChannels.UPDATE_STATUS, payload);
+}
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = false;
+  autoUpdater.logger = log;
+  log.transports.file.level = "info";
+
+  autoUpdater.on("checking-for-update", () => {
+    sendUpdateStatus({ status: "checking-for-update" });
+  });
+
+  autoUpdater.on("update-available", (info: UpdateInfo) => {
+    sendUpdateStatus({ status: "update-available", info });
+  });
+
+  autoUpdater.on("update-not-available", (info: UpdateInfo) => {
+    sendUpdateStatus({ status: "update-not-available", info });
+  });
+
+  autoUpdater.on(
+    "download-progress",
+    (progress: ProgressInfo) => {
+      sendUpdateStatus({
+        status: "download-progress",
+        progress: {
+          percent: progress.percent,
+          transferred: progress.transferred,
+          total: progress.total,
+          bytesPerSecond: progress.bytesPerSecond,
+        },
+      });
+    }
+  );
+
+  autoUpdater.on("update-downloaded", (info: UpdateDownloadedEvent) => {
+    sendUpdateStatus({ status: "update-downloaded", info });
+  });
+
+  autoUpdater.on("error", (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    log.error("autoUpdater error", error);
+    sendUpdateStatus({ status: "error", error: message });
+  });
+}
 
 function createWindow() {
   // アプリケーション名を設定
@@ -90,7 +146,10 @@ app.on("activate", () => {
   }
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  setupAutoUpdater();
+  createWindow();
+});
 
 // =============================================================================
 // IPC Handlers
@@ -208,4 +267,66 @@ ipcMain.handle("app:getVersion", () => {
     license: "MIT",
     repository: "https://github.com/k4zunoko/vidyeet-gui",
   };
+});
+
+// =============================================================================
+// Auto Updater IPC Handlers
+// =============================================================================
+
+function buildAutoUpdateError(message: string, details?: unknown): IpcError {
+  return {
+    code: "AUTO_UPDATE_ERROR",
+    message,
+    details,
+  };
+}
+
+function buildAutoUpdateDisabledError(): IpcError {
+  return {
+    code: "AUTO_UPDATE_DISABLED",
+    message: "Auto update is only available in packaged builds.",
+  };
+}
+
+ipcMain.handle(IpcChannels.UPDATE_CHECK, async () => {
+  if (!app.isPackaged) {
+    return buildAutoUpdateDisabledError();
+  }
+
+  try {
+    await autoUpdater.checkForUpdates();
+    return { success: true };
+  } catch (error) {
+    log.error("autoUpdater checkForUpdates failed", error);
+    return buildAutoUpdateError(
+      "Failed to check for updates.",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+});
+
+ipcMain.handle(IpcChannels.UPDATE_DOWNLOAD, async () => {
+  if (!app.isPackaged) {
+    return buildAutoUpdateDisabledError();
+  }
+
+  try {
+    await autoUpdater.downloadUpdate();
+    return { success: true };
+  } catch (error) {
+    log.error("autoUpdater downloadUpdate failed", error);
+    return buildAutoUpdateError(
+      "Failed to download update.",
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+});
+
+ipcMain.handle(IpcChannels.UPDATE_INSTALL, () => {
+  if (!app.isPackaged) {
+    return buildAutoUpdateDisabledError();
+  }
+
+  autoUpdater.quitAndInstall();
+  return { success: true };
 });

@@ -186,6 +186,8 @@
 ### 成果物
 
 - [ ] インストーラーファイル（`.exe`）
+- [ ] 更新メタデータ（`latest.yml`）が生成されている
+- [ ] 差分更新用ファイル（`.blockmap`）が生成されている
 - [ ] チェックサム（SHA-256）の生成
   ```bash
   certutil -hashfile release/0.1.0/Vidyeet-0.1.0-Setup.exe SHA256
@@ -202,6 +204,7 @@
   - GitHub Releases
   - 独自のダウンロードサーバー
   - その他
+- [ ] GitHub Actions の publish が成功し、Release に成果物と `latest.yml` が添付されている
 - [ ] ダウンロードリンクの作成
 - [ ] 更新通知（必要な場合）
 

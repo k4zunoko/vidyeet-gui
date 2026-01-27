@@ -73,6 +73,27 @@ Renderer（Vue）から Main（Electron）へ要求する操作を IPC として
 
 - `vidyeet:show`（詳細取得）
 
+### アップデート（Auto Update）
+
+`setFeedURL` は使用せず、electron-builder が生成する `app-update.yml` を利用する。
+
+- `update:check`
+  - request: なし
+  - response: `{ success: true }` またはエラー
+
+- `update:download`
+  - request: なし
+  - response: `{ success: true }` またはエラー
+
+- `update:install`
+  - request: なし
+  - response: `{ success: true }` またはエラー（実行後はアプリ終了）
+
+イベント:
+
+- `update:status`（Main → Renderer）
+  - payload: `{ status: "checking-for-update" | "update-available" | "update-not-available" | "download-progress" | "update-downloaded" | "error", info?: object, progress?: { percent: number; transferred: number; total: number; bytesPerSecond: number }, error?: string }`
+
 ## エラー応答（統一）
 
 IPC の失敗は以下の形式で返す（Rendererで扱いやすくする）:

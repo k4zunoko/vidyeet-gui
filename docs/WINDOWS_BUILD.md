@@ -262,6 +262,13 @@ npm run build:win
 
 ## CI/CD統合
 
+### GitHub Releases への publish（auto-update 対応）
+
+- `electron-builder.json5` の `publish` を GitHub provider に設定する
+- NSIS ビルド時に `latest.yml` と `.blockmap` が生成され、Release に含まれる
+- CI では `--publish` フラグを明示して実行する（例: `--publish=onTag`）
+- 認証は `GH_TOKEN` / `GITHUB_TOKEN` を Secrets 経由で供給する
+
 ### GitHub Actions例
 
 ```yaml
@@ -275,13 +282,18 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
       - run: npm ci
-      - run: npm run build:win
+      - run: npm run build:win -- --publish=onTag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v3
         with:
           name: windows-installer

@@ -1,6 +1,12 @@
 /// <reference types="vite-plugin-electron/electron-env" />
 
-import type { VidyeetApi } from './types/ipc'
+import type {
+  VidyeetApi,
+  WindowApi,
+  ClipboardApi,
+  AppApi,
+  UpdaterApi,
+} from './types/ipc'
 
 declare namespace NodeJS {
   interface ProcessEnv {
@@ -28,4 +34,12 @@ interface Window {
   ipcRenderer: import('electron').IpcRenderer
   /** Vidyeet 高水準 API */
   vidyeet: VidyeetApi
+  /** ウィンドウ操作 API */
+  windowControl: WindowApi
+  /** クリップボード API */
+  clipboard: ClipboardApi
+  /** アプリ情報 API */
+  app: AppApi
+  /** アップデート API */
+  updater: UpdaterApi
 }

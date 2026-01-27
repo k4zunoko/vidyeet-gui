@@ -7,6 +7,14 @@
   "directories": {
     "output": "release/${version}"
   },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "k4zunoko",
+      "repo": "vidyeet-gui",
+      "releaseType": "release"
+    }
+  ],
   "files": [
     "dist",
     "dist-electron"

@@ -16,6 +16,8 @@ export type IpcErrorCode =
   | "CLI_BAD_JSON"
   | "CLI_TIMEOUT"
   | "NOT_AUTHENTICATED"
+  | "AUTO_UPDATE_DISABLED"
+  | "AUTO_UPDATE_ERROR"
   | "UNKNOWN_ERROR";
 
 /** IPC統一エラー応答 */
@@ -141,6 +143,36 @@ export interface UploadResponse {
 }
 
 // =============================================================================
+// Auto Update Types
+// =============================================================================
+
+export type UpdateStatus =
+  | "checking-for-update"
+  | "update-available"
+  | "update-not-available"
+  | "download-progress"
+  | "update-downloaded"
+  | "error";
+
+export interface UpdateProgress {
+  percent: number;
+  transferred: number;
+  total: number;
+  bytesPerSecond: number;
+}
+
+export interface UpdateStatusPayload {
+  status: UpdateStatus;
+  info?: unknown;
+  progress?: UpdateProgress;
+  error?: string;
+}
+
+export interface UpdateActionResponse {
+  success: true;
+}
+
+// =============================================================================
 // IPC Channels
 // =============================================================================
 
@@ -154,6 +186,10 @@ export const IpcChannels = {
   SELECT_FILE: "vidyeet:selectFile",
   UPLOAD: "vidyeet:upload",
   CLIPBOARD_WRITE: "clipboard:write",
+  UPDATE_CHECK: "update:check",
+  UPDATE_DOWNLOAD: "update:download",
+  UPDATE_INSTALL: "update:install",
+  UPDATE_STATUS: "update:status",
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
@@ -202,4 +238,12 @@ export interface AppInfo {
 /** アプリケーション情報API */
 export interface AppApi {
   getVersion(): Promise<AppInfo>;
+}
+
+/** アップデーターAPI */
+export interface UpdaterApi {
+  checkForUpdates(): Promise<UpdateActionResponse | IpcError>;
+  downloadUpdate(): Promise<UpdateActionResponse | IpcError>;
+  quitAndInstall(): Promise<UpdateActionResponse | IpcError>;
+  onStatus(onStatus: (payload: UpdateStatusPayload) => void): () => void;
 }

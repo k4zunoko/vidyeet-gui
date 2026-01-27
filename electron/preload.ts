@@ -4,6 +4,9 @@ import {
   type VidyeetApi,
   type WindowApi,
   type ClipboardApi,
+  type AppApi,
+  type UpdaterApi,
+  type UpdateStatusPayload,
   type LoginRequest,
   type DeleteRequest,
   type UploadRequest,
@@ -127,13 +130,51 @@ contextBridge.exposeInMainWorld('windowControl', windowApi)
 /**
  * アプリケーション情報API - window.app として公開
  */
-const appApi = {
+const appApi: AppApi = {
   async getVersion() {
     return await ipcRenderer.invoke('app:getVersion')
   },
 }
 
 contextBridge.exposeInMainWorld('app', appApi)
+
+// =============================================================================
+// Auto Updater API
+// =============================================================================
+
+/**
+ * アップデーターAPI - window.updater として公開
+ */
+const updaterApi: UpdaterApi = {
+  async checkForUpdates() {
+    return await ipcRenderer.invoke(IpcChannels.UPDATE_CHECK)
+  },
+
+  async downloadUpdate() {
+    return await ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD)
+  },
+
+  async quitAndInstall() {
+    return await ipcRenderer.invoke(IpcChannels.UPDATE_INSTALL)
+  },
+
+  onStatus(onStatus) {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      payload: UpdateStatusPayload
+    ) => {
+      onStatus(payload)
+    }
+
+    ipcRenderer.on(IpcChannels.UPDATE_STATUS, listener)
+
+    return () => {
+      ipcRenderer.off(IpcChannels.UPDATE_STATUS, listener)
+    }
+  },
+}
+
+contextBridge.exposeInMainWorld('updater', updaterApi)
 
 // =============================================================================
 // Legacy ipcRenderer API (for backward compatibility)

@@ -27,6 +27,7 @@
   - `window.vidyeet`（status/login/logout/list/delete/selectFile/upload）
   - `window.clipboard`（writeText）
   - `window.windowControl`（minimize/maximize/close/isMaximized）
+  - `window.updater`（checkForUpdates/downloadUpdate/quitAndInstall/onStatus）
 - 互換のため `window.ipcRenderer` も公開されているが、新規コードでは使用禁止（段階的に廃止）
 
 ### Main
@@ -35,6 +36,7 @@
 - `child_process` による CLI 起動
 - タイムアウト、stdout JSON のパース（明示的なキャンセル操作は未実装）
 - 異常系（CLI未存在、JSON不正、exit code非0）を統一エラーにマッピング
+ - autoUpdater のイベントを Renderer へ中継（手動更新確認の前提）
 
 現実装の追加:
 
