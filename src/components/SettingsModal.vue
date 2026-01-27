@@ -4,6 +4,7 @@
  *
  * アプリケーション設定を管理するモーダルダイアログ
  * - ログアウト機能
+ * - アップデート（手動確認・ダウンロード・再起動）
  * - アプリ情報表示（バージョン、CLIパス）
  *
  * UX原則:
@@ -13,7 +14,13 @@
  *
  * @see docs/UI_SPEC.md - 設定画面仕様
  */
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import {
+  isIpcError,
+  type UpdateProgress,
+  type UpdateStatus,
+  type UpdateStatusPayload,
+} from '../../electron/types/ipc';
 
 defineProps<{
   /** モーダルの開閉状態 */
@@ -32,6 +39,114 @@ import packageJson from '../../package.json';
 const appVersion = ref(packageJson.version);
 const cliPath = ref('読み込み中...');
 
+type LocalUpdateStatus = 'idle' | UpdateStatus;
+
+const updateStatus = ref<LocalUpdateStatus>('idle');
+const updateInfo = ref<unknown | null>(null);
+const updateProgress = ref<UpdateProgress | null>(null);
+const updateErrorMessage = ref<string | null>(null);
+const lastCheckedAt = ref<Date | null>(null);
+const isInstalling = ref(false);
+
+const isChecking = computed(() => updateStatus.value === 'checking-for-update');
+const isDownloading = computed(() => updateStatus.value === 'download-progress');
+const isUpdateAvailable = computed(() => updateStatus.value === 'update-available');
+const isUpdateDownloaded = computed(() => updateStatus.value === 'update-downloaded');
+const canCheckForUpdates = computed(
+  () =>
+    !isChecking.value &&
+    !isDownloading.value &&
+    !isInstalling.value &&
+    updateStatus.value !== 'update-downloaded'
+);
+
+const updateStatusVariant = computed(() => {
+  switch (updateStatus.value) {
+    case 'update-not-available':
+    case 'update-downloaded':
+      return 'success';
+    case 'update-available':
+      return 'highlight';
+    case 'error':
+      return 'error';
+    default:
+      return 'neutral';
+  }
+});
+
+const updateStatusLabel = computed(() => {
+  switch (updateStatus.value) {
+    case 'checking-for-update':
+      return '確認中';
+    case 'update-available':
+      return '更新あり';
+    case 'update-not-available':
+      return '最新';
+    case 'download-progress':
+      return 'ダウンロード中';
+    case 'update-downloaded':
+      return '準備完了';
+    case 'error':
+      return 'エラー';
+    default:
+      return '未確認';
+  }
+});
+
+const updateStatusDescription = computed(() => {
+  switch (updateStatus.value) {
+    case 'checking-for-update':
+      return '最新バージョンを確認しています。';
+    case 'update-available':
+      return '新しいバージョンが見つかりました。';
+    case 'update-not-available':
+      return 'すでに最新のバージョンです。';
+    case 'download-progress':
+      return '更新ファイルをダウンロードしています。';
+    case 'update-downloaded':
+      return 'インストールの準備ができました。再起動で更新が適用されます。';
+    case 'error':
+      return (
+        updateErrorMessage.value ??
+        '更新の処理に失敗しました。時間をおいて再試行してください。'
+      );
+    default:
+      return '手動で更新を確認できます。';
+  }
+});
+
+const updateVersionLabel = computed(() => {
+  const version = getUpdateVersion(updateInfo.value);
+  return version ? `新しいバージョン: ${version}` : null;
+});
+
+const downloadPercent = computed(() => {
+  if (!updateProgress.value || !Number.isFinite(updateProgress.value.percent)) {
+    return null;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(updateProgress.value.percent)));
+});
+
+const downloadSummary = computed(() => {
+  if (!updateProgress.value) {
+    return null;
+  }
+
+  const { transferred, total, bytesPerSecond } = updateProgress.value;
+  const parts: string[] = [];
+
+  if (Number.isFinite(transferred) && Number.isFinite(total) && total > 0) {
+    parts.push(`${formatBytes(transferred)} / ${formatBytes(total)}`);
+  }
+
+  if (Number.isFinite(bytesPerSecond) && bytesPerSecond > 0) {
+    parts.push(`${formatBytes(bytesPerSecond)}/s`);
+  }
+
+  return parts.length > 0 ? parts.join(' · ') : null;
+});
+
 /**
  * CLIパスを取得
  */
@@ -43,6 +158,46 @@ async function loadCliPath() {
   } catch {
     cliPath.value = '取得できませんでした';
   }
+}
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 B';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const base = 1024;
+  let value = bytes;
+  let unitIndex = 0;
+
+  while (value >= base && unitIndex < units.length - 1) {
+    value /= base;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat('ja-JP', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function getUpdateVersion(info: unknown): string | null {
+  if (!info || typeof info !== 'object') {
+    return null;
+  }
+
+  const data = info as Record<string, unknown>;
+  const version =
+    (typeof data.version === 'string' && data.version) ||
+    (typeof data.releaseName === 'string' && data.releaseName) ||
+    (typeof data.tag === 'string' && data.tag) ||
+    null;
+
+  return version && version.trim().length > 0 ? version : null;
 }
 
 /**
@@ -67,6 +222,113 @@ function handleLogout() {
   emit('logout');
 }
 
+function setUpdateError(message: string) {
+  updateStatus.value = 'error';
+  updateErrorMessage.value = message;
+  updateProgress.value = null;
+  isInstalling.value = false;
+}
+
+function setUpdateErrorFromIpc(message?: string) {
+  const resolvedMessage =
+    message ??
+    '更新の処理に失敗しました。ネットワークを確認して再試行してください。';
+  setUpdateError(resolvedMessage);
+}
+
+async function handleCheckForUpdates() {
+  if (!canCheckForUpdates.value) {
+    return;
+  }
+
+  updateStatus.value = 'checking-for-update';
+  updateErrorMessage.value = null;
+  updateInfo.value = null;
+  updateProgress.value = null;
+  lastCheckedAt.value = new Date();
+
+  const result = await window.updater.checkForUpdates();
+
+  if (isIpcError(result)) {
+    if (result.code === 'AUTO_UPDATE_DISABLED') {
+      setUpdateError('自動更新はパッケージ版のみ対応しています。');
+      return;
+    }
+
+    setUpdateErrorFromIpc(result.message);
+  }
+}
+
+async function handleDownloadUpdate() {
+  if (!isUpdateAvailable.value || isDownloading.value) {
+    return;
+  }
+
+  updateStatus.value = 'download-progress';
+  updateErrorMessage.value = null;
+  updateProgress.value = null;
+
+  const result = await window.updater.downloadUpdate();
+
+  if (isIpcError(result)) {
+    if (result.code === 'AUTO_UPDATE_DISABLED') {
+      setUpdateError('自動更新はパッケージ版のみ対応しています。');
+      return;
+    }
+
+    setUpdateErrorFromIpc(result.message);
+  }
+}
+
+async function handleInstallUpdate() {
+  if (!isUpdateDownloaded.value || isInstalling.value) {
+    return;
+  }
+
+  isInstalling.value = true;
+  updateErrorMessage.value = null;
+
+  const result = await window.updater.quitAndInstall();
+
+  if (isIpcError(result)) {
+    isInstalling.value = false;
+    if (result.code === 'AUTO_UPDATE_DISABLED') {
+      setUpdateError('自動更新はパッケージ版のみ対応しています。');
+      return;
+    }
+
+    setUpdateErrorFromIpc(result.message);
+  }
+}
+
+function handleUpdateStatus(payload: UpdateStatusPayload) {
+  updateStatus.value = payload.status;
+  updateInfo.value = payload.info ?? updateInfo.value;
+
+  if (payload.status === 'download-progress') {
+    updateProgress.value = payload.progress ?? updateProgress.value;
+  } else {
+    updateProgress.value = payload.progress ?? null;
+  }
+
+  if (payload.status === 'error') {
+    updateErrorMessage.value =
+      payload.error ??
+      '更新の処理に失敗しました。ネットワークを確認して再試行してください。';
+    isInstalling.value = false;
+  } else {
+    updateErrorMessage.value = null;
+  }
+
+  if (
+    payload.status === 'update-available' ||
+    payload.status === 'update-not-available' ||
+    payload.status === 'error'
+  ) {
+    lastCheckedAt.value = new Date();
+  }
+}
+
 /**
  * Escキーで閉じる
  */
@@ -76,13 +338,19 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
+let unsubscribeUpdateStatus: (() => void) | null = null;
+
 onMounted(() => {
   loadCliPath();
   document.addEventListener('keydown', handleKeydown);
+  unsubscribeUpdateStatus = window.updater.onStatus(handleUpdateStatus);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', handleKeydown);
+  if (unsubscribeUpdateStatus) {
+    unsubscribeUpdateStatus();
+  }
 });
 </script>
 
@@ -128,6 +396,109 @@ onBeforeUnmount(() => {
 
         <!-- コンテンツ -->
         <div class="settings-content">
+          <!-- アップデートセクション -->
+          <section class="settings-section settings-section--update">
+            <div class="settings-section-header">
+              <div class="settings-section-heading">
+                <h3 class="settings-section-title settings-section-title--prominent">
+                  アップデート
+                </h3>
+                <p class="settings-section-subtitle">
+                  必要なときに手動で更新を確認できます。
+                </p>
+              </div>
+              <div class="settings-section-actions">
+                <button
+                  class="settings-action-button settings-action-button--ghost"
+                  @click="handleCheckForUpdates"
+                  :disabled="!canCheckForUpdates"
+                >
+                  <span
+                    v-if="isChecking"
+                    class="settings-spinner"
+                    aria-hidden="true"
+                  ></span>
+                  <span>{{ isChecking ? '確認中...' : '更新を確認' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="settings-update-card" :data-variant="updateStatusVariant">
+              <div class="settings-update-row">
+                <div class="settings-update-status">
+                  <span
+                    class="settings-update-badge"
+                    :data-variant="updateStatusVariant"
+                  >
+                    {{ updateStatusLabel }}
+                  </span>
+                  <span v-if="updateVersionLabel" class="settings-update-version">
+                    {{ updateVersionLabel }}
+                  </span>
+                </div>
+                <span v-if="lastCheckedAt" class="settings-update-meta">
+                  最終確認: {{ formatDateTime(lastCheckedAt) }}
+                </span>
+              </div>
+              <p class="settings-update-description">{{ updateStatusDescription }}</p>
+
+              <div v-if="isDownloading" class="settings-update-progress">
+                <div class="settings-progress-header">
+                  <span>ダウンロード進捗</span>
+                  <span v-if="downloadPercent !== null">
+                    {{ downloadPercent }}%
+                  </span>
+                </div>
+                <progress
+                  class="settings-progress-bar"
+                  max="100"
+                  :value="downloadPercent ?? 0"
+                  aria-label="更新ダウンロードの進捗"
+                ></progress>
+                <div class="settings-progress-meta">
+                  <span v-if="downloadSummary">{{ downloadSummary }}</span>
+                  <span class="settings-progress-note">
+                    この画面を閉じてもダウンロードは継続します。
+                  </span>
+                </div>
+              </div>
+
+              <div
+                v-if="isUpdateAvailable || isUpdateDownloaded || updateStatus === 'error'"
+                class="settings-update-actions"
+              >
+                <button
+                  v-if="isUpdateAvailable"
+                  class="settings-action-button settings-action-button--primary"
+                  @click="handleDownloadUpdate"
+                  :disabled="isDownloading"
+                >
+                  ダウンロード
+                </button>
+                <button
+                  v-else-if="isUpdateDownloaded"
+                  class="settings-action-button settings-action-button--primary"
+                  @click="handleInstallUpdate"
+                  :disabled="isInstalling"
+                >
+                  <span
+                    v-if="isInstalling"
+                    class="settings-spinner"
+                    aria-hidden="true"
+                  ></span>
+                  <span>{{ isInstalling ? '再起動中...' : 'インストールして再起動' }}</span>
+                </button>
+                <button
+                  v-else-if="updateStatus === 'error'"
+                  class="settings-action-button settings-action-button--ghost"
+                  @click="handleCheckForUpdates"
+                  :disabled="!canCheckForUpdates"
+                >
+                  再試行
+                </button>
+              </div>
+            </div>
+          </section>
+
           <!-- アカウントセクション -->
           <section class="settings-section">
             <h3 class="settings-section-title">アカウント</h3>
@@ -274,6 +645,238 @@ onBeforeUnmount(() => {
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.settings-section-title--prominent {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.settings-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settings-section-subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.settings-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.settings-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+  min-height: 40px;
+}
+
+.settings-action-button--primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.settings-action-button--primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.settings-action-button--ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary-alpha);
+}
+
+.settings-action-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-update-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-surface-dark);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+.settings-update-card[data-variant='highlight'] {
+  border-color: var(--color-primary);
+  background: rgba(250, 80, 181, 0.08);
+  box-shadow: 0 0 0 1px var(--color-primary-alpha);
+}
+
+.settings-update-card[data-variant='success'] {
+  border-color: var(--color-success);
+  background: rgba(81, 207, 102, 0.12);
+}
+
+.settings-update-card[data-variant='error'] {
+  border-color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.settings-update-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.settings-update-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.settings-update-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-border);
+}
+
+.settings-update-badge[data-variant='highlight'] {
+  color: var(--color-primary);
+  background: var(--color-primary-alpha);
+}
+
+.settings-update-badge[data-variant='success'] {
+  color: var(--color-success);
+  background: rgba(81, 207, 102, 0.2);
+}
+
+.settings-update-badge[data-variant='error'] {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.settings-update-version {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.settings-update-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.settings-update-meta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.settings-update-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.settings-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.settings-progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  appearance: none;
+}
+
+.settings-progress-bar::-webkit-progress-bar {
+  background: var(--color-surface-dark);
+  border-radius: 999px;
+}
+
+.settings-progress-bar::-webkit-progress-value {
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-primary-hover)
+  );
+  border-radius: 999px;
+}
+
+.settings-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.settings-progress-note {
+  color: var(--color-text-muted);
+}
+
+.settings-update-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.settings-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: settings-spin 0.8s linear infinite;
+}
+
+@keyframes settings-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ログアウトボタン */

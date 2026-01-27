@@ -65,8 +65,10 @@ Mux の再生/画像URLは `playback_id` から以下で生成する:
 - `--machine upload <file> --progress` を実行し、進捗をUIに表示する
 - 完了後は一覧を再読み込みする（各ファイル成功時に個別リロード）
 
-### 更新（準備）
+### 更新
 
+- 設定モーダルから手動で更新確認を実行できる
+- 更新がある場合はダウンロードし、再起動で適用できる
 - `electron-updater` を用いて `checkForUpdates()` を IPC 経由で呼び出せる
 - 更新状態はイベントで取得できる（`checking-for-update` / `update-available` / `update-not-available` / `download-progress` / `update-downloaded` / `error`）
 - `setFeedURL` は使用せず、ビルド時に生成される `app-update.yml` を利用する

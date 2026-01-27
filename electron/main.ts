@@ -92,9 +92,10 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on("error", (error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
+    const details = normalizeAutoUpdateErrorDetails(error);
+    const resolved = resolveAutoUpdateError(details, "更新の処理に失敗しました。ネットワークを確認して再試行してください。");
     log.error("autoUpdater error", error);
-    sendUpdateStatus({ status: "error", error: message });
+    sendUpdateStatus({ status: "error", error: resolved.message });
   });
 }
 
@@ -273,10 +274,47 @@ ipcMain.handle("app:getVersion", () => {
 // Auto Updater IPC Handlers
 // =============================================================================
 
-function buildAutoUpdateError(message: string, details?: unknown): IpcError {
+function normalizeAutoUpdateErrorDetails(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function resolveAutoUpdateError(
+  details: string,
+  fallbackMessage: string
+): Pick<IpcError, "code" | "message"> {
+  const normalized = details.toLowerCase();
+
+  if (normalized.includes("app-update.yml") && normalized.includes("enoent")) {
+    return {
+      code: "AUTO_UPDATE_CONFIG_MISSING",
+      message: "更新情報が見つかりませんでした。インストール済みのアプリから実行してください。",
+    };
+  }
+
+  if (
+    normalized.includes("unable to find latest version on github") ||
+    normalized.includes("cannot parse releases feed") ||
+    normalized.includes("releases/latest")
+  ) {
+    return {
+      code: "AUTO_UPDATE_RELEASE_NOT_FOUND",
+      message: "最新のリリースが公開されていないため、更新を確認できません。公開後に再試行してください。",
+    };
+  }
+
   return {
     code: "AUTO_UPDATE_ERROR",
-    message,
+    message: fallbackMessage,
+  };
+}
+
+function buildAutoUpdateError(error: unknown, fallbackMessage: string): IpcError {
+  const details = normalizeAutoUpdateErrorDetails(error);
+  const resolved = resolveAutoUpdateError(details, fallbackMessage);
+
+  return {
+    code: resolved.code,
+    message: resolved.message,
     details,
   };
 }
@@ -299,8 +337,8 @@ ipcMain.handle(IpcChannels.UPDATE_CHECK, async () => {
   } catch (error) {
     log.error("autoUpdater checkForUpdates failed", error);
     return buildAutoUpdateError(
-      "Failed to check for updates.",
-      error instanceof Error ? error.message : String(error)
+      error,
+      "更新の確認に失敗しました。ネットワークを確認して再試行してください。"
     );
   }
 });
@@ -316,8 +354,8 @@ ipcMain.handle(IpcChannels.UPDATE_DOWNLOAD, async () => {
   } catch (error) {
     log.error("autoUpdater downloadUpdate failed", error);
     return buildAutoUpdateError(
-      "Failed to download update.",
-      error instanceof Error ? error.message : String(error)
+      error,
+      "更新のダウンロードに失敗しました。ネットワークを確認して再試行してください。"
     );
   }
 });
