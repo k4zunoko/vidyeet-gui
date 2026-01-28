@@ -27,6 +27,9 @@ import {
   upload,
 } from "./services/vidyeetClient";
 
+// アプリケーション名を設定（electron-log/electron-updaterの初期化前に設定）
+app.name = "Vidyeet";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // The built directory structure
@@ -186,9 +189,6 @@ function setupAutoUpdater() {
 }
 
 function createWindow() {
-  // アプリケーション名を設定
-  app.name = "Vidyeet";
-
   win = new BrowserWindow({
     width: 1200,
     height: 800,
