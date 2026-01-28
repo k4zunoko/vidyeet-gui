@@ -9,7 +9,7 @@
  */
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import type { AppScreen, VideoItem, ToastItem, ToastType } from "./types/app";
-import type { UploadProgress, UpdateStatusPayload } from "../electron/types/ipc";
+import type { UploadProgress } from "../electron/types/ipc";
 import { isIpcError } from "../electron/types/ipc";
 import { useProgressInterpolation } from "./composables/useProgressInterpolation";
 import { useUploadQueue } from "./composables/useUploadQueue";
@@ -106,52 +106,6 @@ function removeToast(id: number) {
     if (index !== -1) {
         toasts.value.splice(index, 1);
     }
-}
-
-// =============================================================================
-// Update notifications
-// =============================================================================
-let unsubscribeUpdateStatus: (() => void) | null = null;
-let lastNotifiedUpdateVersion: string | null = null;
-let hasNotifiedUpdateDownloaded = false;
-
-function getUpdateVersion(info: unknown): string | null {
-    if (!info || typeof info !== "object") {
-        return null;
-    }
-
-    const data = info as Record<string, unknown>;
-    const version =
-        (typeof data.version === "string" && data.version) ||
-        (typeof data.releaseName === "string" && data.releaseName) ||
-        (typeof data.tag === "string" && data.tag) ||
-        null;
-
-    return version && version.trim().length > 0 ? version : null;
-}
-
-function handleUpdateStatusToast(payload: UpdateStatusPayload) {
-    if (payload.status !== "update-downloaded") {
-        return;
-    }
-
-    const version = getUpdateVersion(payload.info);
-    if (version) {
-        if (lastNotifiedUpdateVersion === version) {
-            return;
-        }
-        lastNotifiedUpdateVersion = version;
-    } else if (hasNotifiedUpdateDownloaded) {
-        return;
-    } else {
-        hasNotifiedUpdateDownloaded = true;
-    }
-
-    showToast(
-        "info",
-        "更新のダウンロードが完了しました。終了時に適用されます。",
-        5000,
-    );
 }
 
 // =============================================================================
@@ -802,8 +756,6 @@ async function confirmDelete() {
 onMounted(() => {
     checkAuth();
 
-    unsubscribeUpdateStatus = window.updater.onStatus(handleUpdateStatusToast);
-
     // グローバルドラッグアンドドロップイベントを登録
     // UX原則: ウィンドウ全体でドロップを受け付けることで、ユーザビリティを向上
     document.addEventListener("dragenter", handleDragEnter);
@@ -822,9 +774,6 @@ onBeforeUnmount(() => {
     document.removeEventListener("dragover", handleDragOver);
     document.removeEventListener("drop", handleDrop);
 
-    if (unsubscribeUpdateStatus) {
-        unsubscribeUpdateStatus();
-    }
 });
 </script>
 
