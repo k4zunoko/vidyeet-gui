@@ -51,12 +51,71 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null;
 
+const BACKGROUND_UPDATE_CHECK_DELAY_MS = 10_000;
+
+type UpdateTrigger = "manual" | "background";
+
+let backgroundUpdateCheckTimer: ReturnType<typeof setTimeout> | null = null;
+let updateCheckInProgress = false;
+let updateDownloadInProgress = false;
+let updateDownloadedInfo: UpdateDownloadedEvent | null = null;
+let currentCheckTrigger: UpdateTrigger | null = null;
+let currentDownloadTrigger: UpdateTrigger | null = null;
+let lastDownloadProgress: ProgressInfo | null = null;
+
+function buildUpdateProgress(progress: ProgressInfo) {
+  return {
+    percent: progress.percent,
+    transferred: progress.transferred,
+    total: progress.total,
+    bytesPerSecond: progress.bytesPerSecond,
+  };
+}
+
+function scheduleBackgroundUpdateCheck() {
+  if (!app.isPackaged || backgroundUpdateCheckTimer) {
+    return;
+  }
+
+  backgroundUpdateCheckTimer = setTimeout(() => {
+    backgroundUpdateCheckTimer = null;
+    runUpdateCheck("background").catch((error) => {
+      log.error("autoUpdater background check failed", error);
+    });
+  }, BACKGROUND_UPDATE_CHECK_DELAY_MS);
+}
+
+function clearBackgroundUpdateCheckTimer() {
+  if (!backgroundUpdateCheckTimer) {
+    return;
+  }
+
+  clearTimeout(backgroundUpdateCheckTimer);
+  backgroundUpdateCheckTimer = null;
+}
+
+async function runUpdateCheck(trigger: UpdateTrigger) {
+  if (updateCheckInProgress) {
+    return;
+  }
+
+  updateCheckInProgress = true;
+  currentCheckTrigger = trigger;
+
+  try {
+    await autoUpdater.checkForUpdates();
+  } finally {
+    updateCheckInProgress = false;
+  }
+}
+
 function sendUpdateStatus(payload: UpdateStatusPayload) {
   win?.webContents.send(IpcChannels.UPDATE_STATUS, payload);
 }
 
 function setupAutoUpdater() {
   autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.logger = log;
   log.transports.file.level = "info";
 
@@ -66,32 +125,59 @@ function setupAutoUpdater() {
 
   autoUpdater.on("update-available", (info: UpdateInfo) => {
     sendUpdateStatus({ status: "update-available", info });
+    const shouldAutoDownload = currentCheckTrigger === "background";
+    currentCheckTrigger = null;
+
+    if (!shouldAutoDownload || updateDownloadInProgress) {
+      return;
+    }
+
+    currentDownloadTrigger = "background";
+    updateDownloadInProgress = true;
+
+    autoUpdater.downloadUpdate().catch((error) => {
+      updateDownloadInProgress = false;
+      currentDownloadTrigger = null;
+      log.error("autoUpdater background download failed", error);
+    });
   });
 
   autoUpdater.on("update-not-available", (info: UpdateInfo) => {
     sendUpdateStatus({ status: "update-not-available", info });
+    currentCheckTrigger = null;
   });
 
   autoUpdater.on(
     "download-progress",
     (progress: ProgressInfo) => {
+      lastDownloadProgress = progress;
+      updateDownloadInProgress = true;
+
+      if (currentDownloadTrigger === "background") {
+        return;
+      }
+
       sendUpdateStatus({
         status: "download-progress",
-        progress: {
-          percent: progress.percent,
-          transferred: progress.transferred,
-          total: progress.total,
-          bytesPerSecond: progress.bytesPerSecond,
-        },
+        progress: buildUpdateProgress(progress),
       });
     }
   );
 
   autoUpdater.on("update-downloaded", (info: UpdateDownloadedEvent) => {
+    updateDownloadInProgress = false;
+    updateDownloadedInfo = info;
+    currentDownloadTrigger = null;
+    lastDownloadProgress = null;
     sendUpdateStatus({ status: "update-downloaded", info });
   });
 
   autoUpdater.on("error", (error: unknown) => {
+    updateCheckInProgress = false;
+    updateDownloadInProgress = false;
+    currentCheckTrigger = null;
+    currentDownloadTrigger = null;
+    lastDownloadProgress = null;
     const details = normalizeAutoUpdateErrorDetails(error);
     const resolved = resolveAutoUpdateError(details, "更新の処理に失敗しました。ネットワークを確認して再試行してください。");
     log.error("autoUpdater error", error);
@@ -150,6 +236,7 @@ app.on("activate", () => {
 app.whenReady().then(() => {
   setupAutoUpdater();
   createWindow();
+  scheduleBackgroundUpdateCheck();
 });
 
 // =============================================================================
@@ -331,8 +418,30 @@ ipcMain.handle(IpcChannels.UPDATE_CHECK, async () => {
     return buildAutoUpdateDisabledError();
   }
 
+  clearBackgroundUpdateCheckTimer();
+
+  if (updateDownloadedInfo) {
+    sendUpdateStatus({ status: "update-downloaded", info: updateDownloadedInfo });
+    return { success: true };
+  }
+
+  if (updateDownloadInProgress) {
+    currentDownloadTrigger = "manual";
+
+    if (lastDownloadProgress) {
+      sendUpdateStatus({
+        status: "download-progress",
+        progress: buildUpdateProgress(lastDownloadProgress),
+      });
+    } else {
+      sendUpdateStatus({ status: "download-progress" });
+    }
+
+    return { success: true };
+  }
+
   try {
-    await autoUpdater.checkForUpdates();
+    await runUpdateCheck("manual");
     return { success: true };
   } catch (error) {
     log.error("autoUpdater checkForUpdates failed", error);
@@ -348,10 +457,37 @@ ipcMain.handle(IpcChannels.UPDATE_DOWNLOAD, async () => {
     return buildAutoUpdateDisabledError();
   }
 
+  clearBackgroundUpdateCheckTimer();
+
+  if (updateDownloadedInfo) {
+    sendUpdateStatus({ status: "update-downloaded", info: updateDownloadedInfo });
+    return { success: true };
+  }
+
+  if (updateDownloadInProgress) {
+    currentDownloadTrigger = "manual";
+
+    if (lastDownloadProgress) {
+      sendUpdateStatus({
+        status: "download-progress",
+        progress: buildUpdateProgress(lastDownloadProgress),
+      });
+    } else {
+      sendUpdateStatus({ status: "download-progress" });
+    }
+
+    return { success: true };
+  }
+
+  currentDownloadTrigger = "manual";
+  updateDownloadInProgress = true;
+
   try {
     await autoUpdater.downloadUpdate();
     return { success: true };
   } catch (error) {
+    updateDownloadInProgress = false;
+    currentDownloadTrigger = null;
     log.error("autoUpdater downloadUpdate failed", error);
     return buildAutoUpdateError(
       error,
