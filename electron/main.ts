@@ -147,22 +147,19 @@ function setupAutoUpdater() {
     currentCheckTrigger = null;
   });
 
-  autoUpdater.on(
-    "download-progress",
-    (progress: ProgressInfo) => {
-      lastDownloadProgress = progress;
-      updateDownloadInProgress = true;
+  autoUpdater.on("download-progress", (progress: ProgressInfo) => {
+    lastDownloadProgress = progress;
+    updateDownloadInProgress = true;
 
-      if (currentDownloadTrigger === "background") {
-        return;
-      }
-
-      sendUpdateStatus({
-        status: "download-progress",
-        progress: buildUpdateProgress(progress),
-      });
+    if (currentDownloadTrigger === "background") {
+      return;
     }
-  );
+
+    sendUpdateStatus({
+      status: "download-progress",
+      progress: buildUpdateProgress(progress),
+    });
+  });
 
   autoUpdater.on("update-downloaded", (info: UpdateDownloadedEvent) => {
     updateDownloadInProgress = false;
@@ -179,7 +176,10 @@ function setupAutoUpdater() {
     currentDownloadTrigger = null;
     lastDownloadProgress = null;
     const details = normalizeAutoUpdateErrorDetails(error);
-    const resolved = resolveAutoUpdateError(details, "更新の処理に失敗しました。ネットワークを確認して再試行してください。");
+    const resolved = resolveAutoUpdateError(
+      details,
+      "更新の処理に失敗しました。ネットワークを確認して再試行してください。",
+    );
     log.error("autoUpdater error", error);
     sendUpdateStatus({ status: "error", error: resolved.message });
   });
@@ -367,14 +367,15 @@ function normalizeAutoUpdateErrorDetails(error: unknown): string {
 
 function resolveAutoUpdateError(
   details: string,
-  fallbackMessage: string
+  fallbackMessage: string,
 ): Pick<IpcError, "code" | "message"> {
   const normalized = details.toLowerCase();
 
   if (normalized.includes("app-update.yml") && normalized.includes("enoent")) {
     return {
       code: "AUTO_UPDATE_CONFIG_MISSING",
-      message: "更新情報が見つかりませんでした。インストール済みのアプリから実行してください。",
+      message:
+        "更新情報が見つかりませんでした。インストール済みのアプリから実行してください。",
     };
   }
 
@@ -385,7 +386,8 @@ function resolveAutoUpdateError(
   ) {
     return {
       code: "AUTO_UPDATE_RELEASE_NOT_FOUND",
-      message: "最新のリリースが公開されていないため、更新を確認できません。公開後に再試行してください。",
+      message:
+        "最新のリリースが公開されていないため、更新を確認できません。公開後に再試行してください。",
     };
   }
 
@@ -395,7 +397,10 @@ function resolveAutoUpdateError(
   };
 }
 
-function buildAutoUpdateError(error: unknown, fallbackMessage: string): IpcError {
+function buildAutoUpdateError(
+  error: unknown,
+  fallbackMessage: string,
+): IpcError {
   const details = normalizeAutoUpdateErrorDetails(error);
   const resolved = resolveAutoUpdateError(details, fallbackMessage);
 
@@ -421,7 +426,10 @@ ipcMain.handle(IpcChannels.UPDATE_CHECK, async () => {
   clearBackgroundUpdateCheckTimer();
 
   if (updateDownloadedInfo) {
-    sendUpdateStatus({ status: "update-downloaded", info: updateDownloadedInfo });
+    sendUpdateStatus({
+      status: "update-downloaded",
+      info: updateDownloadedInfo,
+    });
     return { success: true };
   }
 
@@ -447,7 +455,7 @@ ipcMain.handle(IpcChannels.UPDATE_CHECK, async () => {
     log.error("autoUpdater checkForUpdates failed", error);
     return buildAutoUpdateError(
       error,
-      "更新の確認に失敗しました。ネットワークを確認して再試行してください。"
+      "更新の確認に失敗しました。ネットワークを確認して再試行してください。",
     );
   }
 });
@@ -460,7 +468,10 @@ ipcMain.handle(IpcChannels.UPDATE_DOWNLOAD, async () => {
   clearBackgroundUpdateCheckTimer();
 
   if (updateDownloadedInfo) {
-    sendUpdateStatus({ status: "update-downloaded", info: updateDownloadedInfo });
+    sendUpdateStatus({
+      status: "update-downloaded",
+      info: updateDownloadedInfo,
+    });
     return { success: true };
   }
 
@@ -491,7 +502,7 @@ ipcMain.handle(IpcChannels.UPDATE_DOWNLOAD, async () => {
     log.error("autoUpdater downloadUpdate failed", error);
     return buildAutoUpdateError(
       error,
-      "更新のダウンロードに失敗しました。ネットワークを確認して再試行してください。"
+      "更新のダウンロードに失敗しました。ネットワークを確認して再試行してください。",
     );
   }
 });
@@ -501,6 +512,6 @@ ipcMain.handle(IpcChannels.UPDATE_INSTALL, () => {
     return buildAutoUpdateDisabledError();
   }
 
-  autoUpdater.quitAndInstall();
+  autoUpdater.quitAndInstall(true, true);
   return { success: true };
 });
