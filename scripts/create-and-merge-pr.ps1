@@ -48,75 +48,21 @@ if (-not $prNumber) {
 
 Write-Host "PR Number: $prNumber" -ForegroundColor Green
 
-# Wait for CI to complete
+# Wait for CI to complete using gh pr checks --watch
 Write-Host "Waiting for CI checks to complete..." -ForegroundColor Cyan
-$maxAttempts = 120  # 2 hours with 60 second intervals
-$attempt = 0
+gh pr checks $prNumber --watch
 
-while ($attempt -lt $maxAttempts) {
-    $prStatus = gh pr view $prNumber --json statusCheckRollup | ConvertFrom-Json
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "Failed to get PR status." -ForegroundColor Red
-        $attempt++
-        Start-Sleep -Seconds 60
-        continue
-    }
-
-    $rollup = $prStatus.statusCheckRollup
-
-    if ($rollup.Count -eq 0) {
-        Write-Host "No checks found yet. Waiting..." -ForegroundColor Yellow
-        $attempt++
-        Start-Sleep -Seconds 60
-        continue
-    }
-
-    # Check rollup states
-    $states = $rollup | Select-Object -ExpandProperty state -ErrorAction SilentlyContinue
-
-    # Check if all checks are complete (no PENDING states)
-    $hasPending = $states -contains "PENDING"
-    
-    if (-not $hasPending) {
-        # All checks are complete, check if all passed
-        $hasFailed = $states -contains "FAILURE"
-
-        Write-Host "Checks complete!" -ForegroundColor Green
-        Write-Host ""
-
-        # Display check results
-        foreach ($check in $rollup) {
-            $statusSymbol = if ($check.state -eq "SUCCESS") { "[OK]" } else { "[NG]" }
-            $color = if ($check.state -eq "SUCCESS") { "Green" } else { "Red" }
-            Write-Host "$statusSymbol $($check.name): $($check.state) (conclusion: $($check.conclusion))" -ForegroundColor $color
-        }
-
-        if (-not $hasFailed) {
-            Write-Host "All checks passed!" -ForegroundColor Green
-            break
-        } else {
-            Write-Host "CI checks failed. Aborting merge." -ForegroundColor Red
-            Write-Host "Please review the PR: https://github.com/$(git config --get remote.origin.url | sed 's/.*:\|\.git$//g')/pull/$prNumber" -ForegroundColor Yellow
-            exit 1
-        }
-    } else {
-        $pendingChecks = ($rollup | Where-Object { $_.state -eq "PENDING" }).name -join ", "
-        Write-Host "Still waiting for: $pendingChecks" -ForegroundColor Yellow
-        $attempt++
-        Start-Sleep -Seconds 60
-    }
-}
-
-if ($attempt -eq $maxAttempts) {
-    Write-Host "Timeout waiting for CI checks. Aborting merge." -ForegroundColor Red
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "CI checks failed or timed out. Aborting merge." -ForegroundColor Red
     Write-Host "Please review the PR: https://github.com/$(git config --get remote.origin.url | sed 's/.*:\|\.git$//g')/pull/$prNumber" -ForegroundColor Yellow
     exit 1
 }
 
+Write-Host "All checks passed!" -ForegroundColor Green
+
 # Merge the PR
 Write-Host "Merging pull request..." -ForegroundColor Cyan
-gh pr merge $prNumber --squash
+gh pr merge $prNumber --squash --delete-branch
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Failed to merge pull request." -ForegroundColor Red
@@ -125,3 +71,35 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "[OK] Pull request merged successfully!" -ForegroundColor Green
 Write-Host "Merged PR #$prNumber into main" -ForegroundColor Green
+
+# Switch to main and sync
+Write-Host "Switching to main branch..." -ForegroundColor Cyan
+git switch main
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Warning: Could not switch to main branch." -ForegroundColor Yellow
+}
+
+Write-Host "Pulling latest changes..." -ForegroundColor Cyan
+git pull --ff-only
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Warning: Could not pull changes. Repository may have diverged." -ForegroundColor Yellow
+}
+
+Write-Host "Pruning stale remote branches..." -ForegroundColor Cyan
+git fetch --prune
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Warning: Could not prune remote branches." -ForegroundColor Yellow
+}
+
+# Clean up local branch
+Write-Host "Cleaning up local branch..." -ForegroundColor Cyan
+git branch -d $currentBranch
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Warning: Could not delete local branch '$currentBranch'. It may have unmerged commits." -ForegroundColor Yellow
+} else {
+    Write-Host "[OK] Local branch '$currentBranch' deleted" -ForegroundColor Green
+}
