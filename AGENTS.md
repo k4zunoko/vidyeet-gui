@@ -17,60 +17,8 @@
 
 **最初に読むドキュメント** (推奨順序):
 1. `docs/README.md` — プロジェクト最小概要・ナビゲーション・メタ情報
-2. `docs/DESIGN_PHILOSOPHY.md` — 設計原則・責務分離
-3. `docs/REQUIREMENTS.md` — 現実装の機能・非機能要求
-4. `docs/UI_SPEC.md` — 画面仕様・状態遷移
+2. `docs/REQUIREMENTS.md` — 現実装の機能・非機能要求
+3. `docs/CLI_CONTRACT.md` — CLI と GUI の責務分離・通信仕様
+4. `docs/UX_PSYCHOLOGY.md` — UI 設計の心理学的原則と実装指針
 
 その他の詳細ドキュメントは `docs/README.md` の「実装ガイド」セクションを参照してください。
-
----
-## AGENTS: Skill（`~\.config\opencode\skills`）使用ポリシー
-
-目的:
-- コーディングエージェントは、受け取ったプロンプトを解析して、`~\.config\opencode\skills`（以下「スキル」）を使用すべきかを判断する責任を負います。
-
-必須ルール:
-1. プロンプトを受け取ったら必ずスキル適用判定を行う。  
-   - 明示的にスキル名が書かれている場合は即時使用すること。
-   - SKILL.mdに記載されているnameやdescriptionを参照し、プロンプト内容と照合すること。
-   - 明示がない場合でも、プロンプトの意図・タスク内容がスキルの能力範囲に一致するなら「必ず」スキルを使用すること。
-
-2. 使用前に確認が必要な曖昧さがある場合は、最短で明確化質問を行う。ただし質問によって処理が大きく遅延するなら、「暫定で最適と思われるスキルを実行」し、その旨をユーザに通知しつつ並行して確認を求める。
-
-3. スキル呼び出しは明示的に出力に示せ（自己検証のため）：
-   - 出力例（必須）: `USING SKILL: <skill-name>` または `SKILL INVOKED: <skill-name> - <brief reason>` を最初の行か情報欄に含めること。
-
----
-
-## OpenCode: Windows(cmd.exe) の引用符破壊による出力欠落（回避策）
-
-### TL;DR
-- **原則**: `cmd.exe /c "..."` を **ネストして実行しない**（二重ラップで引用が壊れやすい）
-- **推奨**: 組み込みコマンドは **素のコマンドで実行**（例: `echo Hello World`）
-- **必要なら**: `cmd.exe` は **二重引用**で保護（`""...""`）
-- **代替**: 引用が複雑なら **PowerShell** へ迂回
-
-### 症状
-`cmd.exe /c "echo Hello World"` を実行すると `Hello World` が出ず、`Microsoft Windows [Version ...]` のバナーのみが出る。
-
-### 原因（要点のみ）
-OpenCode 側でコマンドをシェル実行（ラップ）する状況で、`cmd.exe /c "..."` の **内側の `"` が外側の引用と衝突**し、`/c` の引数が崩れて **cmd が対話起動扱い**になる。
-
-### 回避策（推奨順）
-#### 1) cmd.exe を明示しない（最優先）
-OpenCode の `bash` ツールはシェルコマンド実行用途なので、Windows 組み込みも素で投げる。
-```text
-echo Hello World
-````
-
-#### 2) 引用が複雑なら PowerShell に寄せる
-
-```text
-powershell -NoProfile -Command "Write-Output 'Hello World'"
-```
-
-### エージェント向け DO / DON'T
-
-*   ✅ DO: **素のコマンド**で実行（`echo`, `dir`, `type` など）
-*   ✅ DO: 文字列やパスの引用が増えるなら **PowerShell へ迂回**
-*   ❌ DON'T: `cmd.exe /c "..."` を **さらに別のシェル実行にネスト**して渡す

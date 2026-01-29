@@ -189,8 +189,7 @@ contextBridge.exposeInMainWorld('updater', updaterApi)
  * 2. 既存の window.ipcRenderer 使用箇所を window.vidyeet に移行
  * 3. 移行完了後、この公開を削除
  *
- * @see docs/ARCHITECTURE.md - Preload の責務
- * @see docs/IPC_CONTRACT.md - 原則
+ * IPC型定義はelectron/types/ipc.ts、Preload設計はelectron/preload.tsのコメント参照
  */
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld('ipcRenderer', {

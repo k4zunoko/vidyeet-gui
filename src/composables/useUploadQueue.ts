@@ -9,7 +9,7 @@
  * - 個別リロード: 各ファイル成功時に一覧を更新
  * - 状態管理: Reactiveな状態でUIと連携
  *
- * @see docs/DESIGN_PHILOSOPHY.md - 責務分離とCLI単一真実の原則
+ * CLI と GUI の責務分離は docs/README.md、CLI_CONTRACT.md 参照
  */
 
 import { ref, computed, type Ref, type ComputedRef } from "vue";
