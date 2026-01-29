@@ -573,9 +573,9 @@ onBeforeUnmount(() => {
                                 <span class="settings-info-label"
                                     >バージョン</span
                                 >
-                                <span class="settings-info-value"
-                                    >{{ appVersion }}-alpha</span
-                                >
+                                <span class="settings-info-value">{{
+                                    appVersion
+                                }}</span>
                             </div>
                             <div class="settings-info-item">
                                 <span class="settings-info-label"
