@@ -8,11 +8,13 @@
  * @see docs/UI_SPEC.md - 起動時状態遷移
  */
 import { ref, onMounted, onBeforeUnmount } from "vue";
-import type { AppScreen, VideoItem, ToastItem, ToastType } from "./types/app";
-import type { UploadProgress } from "../electron/types/ipc";
+import type { AppScreen, VideoItem } from "./types/app";
 import { isIpcError } from "../electron/types/ipc";
-import { useProgressInterpolation } from "./composables/useProgressInterpolation";
-import { useUploadQueue } from "./composables/useUploadQueue";
+import { useToast } from "./composables/useToast";
+import { useContextMenu } from "./composables/useContextMenu";
+import { useDeleteDialog } from "./composables/useDeleteDialog";
+import { useDragDrop } from "./composables/useDragDrop";
+import { useUploadDialog } from "./composables/useUploadDialog";
 import TitleBar from "./components/TitleBar.vue";
 import SettingsModal from "./components/SettingsModal.vue";
 import VideoInfoPanel from "./components/VideoInfoPanel.vue";
@@ -39,242 +41,63 @@ const isSettingsOpen = ref(false);
 const libraryRef = ref<InstanceType<typeof LibraryView> | null>(null);
 
 // =============================================================================
-// ドラッグアンドドロップ状態
-// =============================================================================
-const isDragging = ref(false);
-let dragCounter = 0; // 子要素へのドラッグ判定用カウンター
-
-// =============================================================================
 // コンテキストメニュー状態（グローバル管理）
 // =============================================================================
-const contextMenuState = ref({
-    isOpen: false,
-    video: null as VideoItem | null,
-    x: 0,
-    y: 0,
+const contextMenu = useContextMenu();
+
+// =============================================================================
+// トースト通知
+// =============================================================================
+const { toasts, showToast, removeToast } = useToast();
+
+// =============================================================================
+// アップロードダイアログ
+// =============================================================================
+const uploadDialog = useUploadDialog({
+  showToast,
+  onUploadComplete: () => {
+    libraryRef.value?.reload();
+  },
+});
+
+// =============================================================================
+// ドラッグアンドドロップ
+// =============================================================================
+const dragDrop = useDragDrop({
+  onFilesDropped: async (files) => {
+    await uploadDialog.handleMultipleFiles(
+      files.map((f) => ({
+        name: f.fileName,
+        path: f.filePath,
+      } as any)),
+    );
+  },
+  showToast,
 });
 
 // =============================================================================
 // 削除確認ダイアログ状態
 // =============================================================================
-const deleteDialogState = ref({
-    isOpen: false,
-    video: null as VideoItem | null,
-    isDeleting: false,
-    errorMessage: null as string | null,
+const deleteDialog = useDeleteDialog({
+  onDelete: async (assetId: string) => {
+    const result = await window.vidyeet.delete({ assetId });
+    if (isIpcError(result)) {
+      throw new Error("動画の削除に失敗しました。");
+    }
+  },
+  onDeleted: (assetId: string) => {
+    // 削除成功: 一覧から削除
+    libraryRef.value?.removeVideo(assetId);
+
+    // 選択中の動画が削除された場合、選択を解除
+    if (selectedVideo.value?.assetId === assetId) {
+      selectedVideo.value = null;
+    }
+  },
+  showToast,
 });
 
-// =============================================================================
-// トースト通知状態
-// =============================================================================
-const toasts = ref<ToastItem[]>([]);
-let toastIdCounter = 0;
 
-/**
- * トースト通知を表示
- * @param type - 通知タイプ
- * @param message - 表示メッセージ
- * @param duration - 自動消去までの時間（ミリ秒）。デフォルトは成功3秒、エラー5秒
- */
-function showToast(type: ToastType, message: string, duration?: number) {
-    const defaultDuration = type === "error" ? 5000 : 3000;
-    const id = ++toastIdCounter;
-    const toast: ToastItem = {
-        id,
-        type,
-        message,
-        duration: duration ?? defaultDuration,
-    };
-
-    // 最大3件まで保持（古いものを削除）
-    if (toasts.value.length >= 3) {
-        toasts.value.shift();
-    }
-    toasts.value.push(toast);
-
-    // 自動消去タイマー
-    setTimeout(() => {
-        removeToast(id);
-    }, toast.duration);
-}
-
-/**
- * トーストを削除
- */
-function removeToast(id: number) {
-    const index = toasts.value.findIndex((t) => t.id === id);
-    if (index !== -1) {
-        toasts.value.splice(index, 1);
-    }
-}
-
-// =============================================================================
-// アップロードダイアログ状態
-// =============================================================================
-const uploadDialogState = ref({
-    isOpen: false,
-    isMinimized: false, // ノンモーダル最小化状態
-    fileName: "",
-    phase: "" as string,
-    phaseText: "",
-    isUploading: false,
-    errorMessage: null as string | null,
-    // プログレスバー用のフィールド
-    progressPercent: 0,
-    currentChunk: 0,
-    totalChunks: 0,
-    bytesSent: 0,
-    totalBytes: 0,
-    showProgressBar: false,
-});
-
-// =============================================================================
-// アップロードキュー
-// =============================================================================
-const uploadQueue = useUploadQueue();
-
-// 進捗補間ハンドラを生成（アップロードごとに独立）
-function createUploadProgressHandler() {
-    let progressInterpolation: ReturnType<
-        typeof useProgressInterpolation
-    > | null = null;
-
-    const onProgress = (progress: UploadProgress) => {
-        // 進捗更新
-        uploadDialogState.value.phase = progress.phase;
-        uploadDialogState.value.phaseText = getPhaseText(progress.phase);
-
-        // uploading_file フェーズでプログレスバーを0%表示と補間初期化
-        // CLI仕様 v1.1: uploading_file に total_chunks が含まれるようになった
-        // Warmup モード: 第1chunk完了までの間だけ time-based で進捗を滑らかに表示
-        // UX原則: 10秒以上の処理には percent-done indicator を使用 (NN/g)
-        if (progress.phase === "uploading_file") {
-            uploadDialogState.value.showProgressBar = true;
-            uploadDialogState.value.progressPercent = 0;
-            uploadDialogState.value.totalBytes = progress.sizeBytes ?? 0;
-            uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
-
-            // 進捗補間を初期化（コールバックで UI を更新）
-            const totalBytes = progress.sizeBytes ?? 0;
-            const totalChunks = progress.totalChunks ?? 0;
-            if (totalBytes > 0) {
-                progressInterpolation = useProgressInterpolation(
-                    totalBytes,
-                    (displayBytes, displayPercent) => {
-                        // 補間された値で UI を更新
-                        if (uploadDialogState.value.showProgressBar) {
-                            uploadDialogState.value.bytesSent =
-                                Math.round(displayBytes);
-                            uploadDialogState.value.progressPercent =
-                                Math.round(displayPercent);
-                        }
-                    },
-                );
-
-                // アップロード開始時刻を記録
-                progressInterpolation.startUpload();
-
-                // Warmup モードを初期化（total_chunks 確定時）
-                if (totalChunks > 0) {
-                    progressInterpolation.initializeWarmup(totalChunks);
-                }
-            }
-        }
-
-        // uploading_chunk フェーズでプログレスバーを更新（補間適用）
-        if (
-            progress.phase === "uploading_chunk" &&
-            progress.totalBytes &&
-            progress.bytesSent !== undefined
-        ) {
-            uploadDialogState.value.showProgressBar = true;
-            uploadDialogState.value.currentChunk = progress.currentChunk ?? 0;
-            uploadDialogState.value.totalChunks = progress.totalChunks ?? 0;
-            uploadDialogState.value.totalBytes = progress.totalBytes;
-
-            // Truth（確定値）を更新（コールバックで UI が自動更新される）
-            if (progressInterpolation) {
-                progressInterpolation.updateTruth(progress.bytesSent);
-            } else {
-                // フォールバック: 補間が初期化されていない場合は直接設定
-                uploadDialogState.value.bytesSent = progress.bytesSent;
-                uploadDialogState.value.progressPercent = Math.round(
-                    (progress.bytesSent / progress.totalBytes) * 100,
-                );
-            }
-        }
-
-        // file_uploaded, waiting_for_asset, completed ではプログレスバーを100%に
-        if (
-            ["file_uploaded", "waiting_for_asset", "completed"].includes(
-                progress.phase,
-            )
-        ) {
-            if (uploadDialogState.value.showProgressBar) {
-                // 補間を停止し、100% に設定
-                if (progressInterpolation) {
-                    progressInterpolation.updateTruth(
-                        uploadDialogState.value.totalBytes,
-                    );
-                }
-                uploadDialogState.value.progressPercent = 100;
-                uploadDialogState.value.bytesSent =
-                    uploadDialogState.value.totalBytes;
-            }
-        }
-    };
-
-    const cleanup = () => {
-        // 進捗補間を停止してリセット
-        if (progressInterpolation) {
-            progressInterpolation.reset();
-            progressInterpolation = null;
-        }
-
-        // uploadDialogState の進捗フィールドをリセット
-        uploadDialogState.value.progressPercent = 0;
-        uploadDialogState.value.currentChunk = 0;
-        uploadDialogState.value.totalChunks = 0;
-        uploadDialogState.value.bytesSent = 0;
-        uploadDialogState.value.totalBytes = 0;
-        uploadDialogState.value.showProgressBar = false;
-    };
-
-    return { onProgress, cleanup };
-}
-
-/**
- * アップロードフェーズを日本語に変換
- *
- * UX原則:
- * - 認知負荷軽減: 短く明確なテキスト
- * - フレーミング効果: ポジティブな表現を使用
- */
-function getPhaseText(phase: string): string {
-    const phaseMap: Record<string, string> = {
-        validating_file: "ファイルを検証中...",
-        file_validated: "ファイル検証完了",
-        creating_direct_upload: "アップロード準備中...",
-        direct_upload_created: "アップロード準備完了",
-        uploading_file: "アップロード中...",
-        uploading_chunk: "アップロード中...",
-        file_uploaded: "アップロード完了",
-        waiting_for_asset: "処理中...",
-        completed: "完了",
-    };
-    return phaseMap[phase] || phase;
-}
-
-/**
- * バイト数を人間が読みやすい形式に変換
- */
-function formatBytes(bytes: number): string {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-}
 
 /**
  * 認証状態をチェック
@@ -354,221 +177,6 @@ function closeSettings() {
 }
 
 // =============================================================================
-// ドラッグアンドドロップ操作
-// =============================================================================
-
-/**
- * ファイルが動画形式かどうかをチェック
- */
-function isVideoFile(file: File): boolean {
-    const videoTypes = [
-        "video/mp4",
-        "video/quicktime",
-        "video/x-msvideo",
-        "video/x-matroska",
-        "video/webm",
-        "video/ogg",
-    ];
-    return videoTypes.includes(file.type);
-}
-
-/**
- * dragenter イベントハンドラ
- * UX原則: ドハティの閾値 - 即座に視覚的フィードバックを提供
- */
-function handleDragEnter(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    dragCounter++;
-    if (dragCounter === 1) {
-        isDragging.value = true;
-    }
-}
-
-/**
- * dragleave イベントハンドラ
- */
-function handleDragLeave(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    dragCounter--;
-    if (dragCounter === 0) {
-        isDragging.value = false;
-    }
-}
-
-/**
- * dragover イベントハンドラ
- */
-function handleDragOver(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-}
-
-/**
- * drop イベントハンドラ
- * UX原則:
- * - ドハティの閾値: ドロップ後即座にアップロード進捗ダイアログを表示
- * - フレーミング効果: エラーは次の行動を示唆
- */
-async function handleDrop(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // ドラッグ状態をリセット
-    isDragging.value = false;
-    dragCounter = 0;
-
-    // ファイルを取得
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) {
-        return;
-    }
-
-    // 動画形式チェック（複数ファイル対応）
-    const videoFiles: File[] = [];
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (isVideoFile(file)) {
-            videoFiles.push(file);
-        }
-    }
-
-    if (videoFiles.length === 0) {
-        showToast("error", "動画ファイルのみアップロードできます");
-        return;
-    }
-
-    // ファイルパスを取得してキューに追加
-    await handleMultipleFiles(videoFiles);
-}
-
-/**
- * 複数ファイルをキューに追加して処理開始
- */
-async function handleMultipleFiles(files: File[]) {
-    // ファイルパスを取得
-    const fileItems: { filePath: string; fileName: string }[] = [];
-    for (const file of files) {
-        const filePath = (file as any).path || "";
-        if (!filePath) {
-            showToast(
-                "error",
-                `${file.name}: ファイルパスの取得に失敗しました`,
-            );
-            continue;
-        }
-        fileItems.push({
-            filePath,
-            fileName: file.name,
-        });
-    }
-
-    if (fileItems.length === 0) {
-        return;
-    }
-
-    // キューに追加
-    uploadQueue.enqueue(fileItems);
-
-    // ダイアログを開く
-    uploadDialogState.value.isOpen = true;
-    uploadDialogState.value.isMinimized = false;
-
-    // キューが処理中でなければ開始
-    if (!uploadQueue.isProcessing.value) {
-        await processUploadQueue();
-    }
-}
-
-/**
- * アップロードキューを処理
- */
-async function processUploadQueue() {
-    // 次のアイテムを取得
-    const item = uploadQueue.startNext();
-    if (!item) {
-        // キュー完了
-        uploadDialogState.value.isOpen = false;
-
-        const stats = uploadQueue.stats.value;
-        if (stats.completed > 0) {
-            if (stats.error > 0) {
-                showToast(
-                    "info",
-                    `${stats.completed}件完了、${stats.error}件失敗しました`,
-                );
-            } else {
-                showToast(
-                    "success",
-                    `${stats.completed}件のアップロードが完了しました`,
-                );
-            }
-        }
-
-        // キューをクリア
-        uploadQueue.clear();
-        return;
-    }
-
-    // アップロード状態を初期化
-    uploadDialogState.value.fileName = item.fileName;
-    uploadDialogState.value.phase = "starting";
-    uploadDialogState.value.phaseText = "開始中...";
-    uploadDialogState.value.isUploading = true;
-    uploadDialogState.value.errorMessage = null;
-    uploadDialogState.value.progressPercent = 0;
-    uploadDialogState.value.currentChunk = 0;
-    uploadDialogState.value.totalChunks = 0;
-    uploadDialogState.value.bytesSent = 0;
-    uploadDialogState.value.totalBytes = 0;
-    uploadDialogState.value.showProgressBar = false;
-
-    const { onProgress, cleanup } = createUploadProgressHandler();
-
-    // アップロード実行
-    const uploadResult = await window.vidyeet.upload(
-        { filePath: item.filePath },
-        onProgress,
-    );
-
-    if (isIpcError(uploadResult)) {
-        // エラー: キューに記録
-        uploadQueue.markCurrentError(uploadResult.message);
-        uploadDialogState.value.isUploading = false;
-        uploadDialogState.value.errorMessage = uploadResult.message;
-        cleanup();
-
-        // エラートースト表示
-        showToast("error", `${item.fileName}: アップロード失敗`);
-
-        // 次のファイルを処理（少し待ってから）
-        setTimeout(() => {
-            processUploadQueue();
-        }, 1000);
-        return;
-    }
-
-    // 成功: キューに記録
-    uploadQueue.markCurrentCompleted(uploadResult.assetId);
-    uploadDialogState.value.phase = "completed";
-    uploadDialogState.value.phaseText = "アップロード完了！";
-    uploadDialogState.value.isUploading = false;
-
-    // 個別リロード: 成功したファイルをすぐに一覧に追加
-    libraryRef.value?.reload();
-
-    cleanup();
-
-    // 次のファイルを処理（少し待ってから）
-    setTimeout(() => {
-        processUploadQueue();
-    }, 800);
-}
-
-// =============================================================================
 // アップロード操作
 // =============================================================================
 
@@ -594,71 +202,13 @@ async function handleUpload() {
     const fileName =
         selectResult.filePath.split(/[\\/]/).pop() || selectResult.filePath;
 
-    // キューに追加
-    uploadQueue.enqueue([
+    // handleMultipleFiles を使ってキューに追加＆処理開始
+    await uploadDialog.handleMultipleFiles([
         {
-            filePath: selectResult.filePath,
-            fileName,
-        },
+            name: fileName,
+            path: selectResult.filePath,
+        } as any,
     ]);
-
-    // ダイアログを開く
-    uploadDialogState.value.isOpen = true;
-    uploadDialogState.value.isMinimized = false;
-
-    // キューが処理中でなければ開始
-    if (!uploadQueue.isProcessing.value) {
-        await processUploadQueue();
-    }
-}
-
-/**
- * アップロードダイアログを閉じる
- *
- * エラー後にダイアログを閉じる際、進捗データをリセットして
- * 次回アップロード時に前回の進捗が残らないようにする
- */
-function closeUploadDialog() {
-    if (!uploadDialogState.value.isUploading) {
-        uploadDialogState.value.isOpen = false;
-        uploadDialogState.value.isMinimized = false;
-
-        // 進捗データをリセット（防御的プログラミング）
-        uploadDialogState.value.progressPercent = 0;
-        uploadDialogState.value.currentChunk = 0;
-        uploadDialogState.value.totalChunks = 0;
-        uploadDialogState.value.bytesSent = 0;
-        uploadDialogState.value.totalBytes = 0;
-        uploadDialogState.value.showProgressBar = false;
-        uploadDialogState.value.errorMessage = null;
-        uploadDialogState.value.phase = "";
-        uploadDialogState.value.phaseText = "";
-
-        // キューもクリア
-        uploadQueue.clear();
-    }
-}
-
-/**
- * キュー内のアイテムをキャンセル
- */
-function cancelQueueItem(id: number) {
-    uploadQueue.cancel(id);
-}
-
-/**
- * アップロードダイアログを最小化
- * UX原則: ユーザーに制御を与える (NN/g)
- */
-function minimizeUploadDialog() {
-    uploadDialogState.value.isMinimized = true;
-}
-
-/**
- * アップロードダイアログを復元（最小化解除）
- */
-function restoreUploadDialog() {
-    uploadDialogState.value.isMinimized = false;
 }
 
 // =============================================================================
@@ -666,86 +216,10 @@ function restoreUploadDialog() {
 // =============================================================================
 
 /**
- * コンテキストメニューを表示（サイドバーまたはプレイヤーから）
- */
-function showContextMenu(event: MouseEvent, video: VideoItem) {
-    contextMenuState.value = {
-        isOpen: true,
-        video,
-        x: event.clientX,
-        y: event.clientY,
-    };
-}
-
-/**
- * コンテキストメニューを閉じる
- */
-function closeContextMenu() {
-    contextMenuState.value.isOpen = false;
-}
-
-/**
  * コンテキストメニューから削除を要求
  */
 function handleDeleteRequest(video: VideoItem) {
-    deleteDialogState.value = {
-        isOpen: true,
-        video,
-        isDeleting: false,
-        errorMessage: null,
-    };
-}
-
-// =============================================================================
-// 削除ダイアログ操作
-// =============================================================================
-
-/**
- * 削除をキャンセル
- */
-function cancelDelete() {
-    deleteDialogState.value.isOpen = false;
-    deleteDialogState.value.video = null;
-}
-
-/**
- * 削除を実行
- */
-async function confirmDelete() {
-    const video = deleteDialogState.value.video;
-    if (!video) return;
-
-    deleteDialogState.value.isDeleting = true;
-    deleteDialogState.value.errorMessage = null;
-
-    try {
-        const result = await window.vidyeet.delete({ assetId: video.assetId });
-
-        if (isIpcError(result)) {
-            deleteDialogState.value.errorMessage = "動画の削除に失敗しました。";
-            deleteDialogState.value.isDeleting = false;
-            return;
-        }
-
-        // 削除成功: 一覧から削除
-        libraryRef.value?.removeVideo(video.assetId);
-
-        // 選択中の動画が削除された場合、選択を解除
-        if (selectedVideo.value?.assetId === video.assetId) {
-            selectedVideo.value = null;
-        }
-
-        // ダイアログを閉じる
-        deleteDialogState.value.isOpen = false;
-        deleteDialogState.value.video = null;
-
-        // トースト通知を表示
-        showToast("success", "動画を削除しました");
-    } catch (err) {
-        deleteDialogState.value.errorMessage = "削除中にエラーが発生しました。";
-    } finally {
-        deleteDialogState.value.isDeleting = false;
-    }
+    deleteDialog.openDeleteDialog(video);
 }
 
 /**
@@ -757,11 +231,7 @@ onMounted(() => {
     checkAuth();
 
     // グローバルドラッグアンドドロップイベントを登録
-    // UX原則: ウィンドウ全体でドロップを受け付けることで、ユーザビリティを向上
-    document.addEventListener("dragenter", handleDragEnter);
-    document.addEventListener("dragleave", handleDragLeave);
-    document.addEventListener("dragover", handleDragOver);
-    document.addEventListener("drop", handleDrop);
+    dragDrop.setupGlobalListeners();
 });
 
 /**
@@ -769,11 +239,7 @@ onMounted(() => {
  */
 onBeforeUnmount(() => {
     // イベントリスナーを削除
-    document.removeEventListener("dragenter", handleDragEnter);
-    document.removeEventListener("dragleave", handleDragLeave);
-    document.removeEventListener("dragover", handleDragOver);
-    document.removeEventListener("drop", handleDrop);
-
+    dragDrop.cleanupGlobalListeners();
 });
 </script>
 
@@ -814,7 +280,7 @@ onBeforeUnmount(() => {
                         ref="libraryRef"
                         :selected-video="selectedVideo"
                         @select="handleSelectVideo"
-                        @contextmenu="showContextMenu"
+                        @contextmenu="contextMenu.showContextMenu"
                         @upload="handleUpload"
                     />
                 </aside>
@@ -824,7 +290,7 @@ onBeforeUnmount(() => {
                     <main class="main-content">
                         <VideoPlayer
                             :video="selectedVideo"
-                            @contextmenu="showContextMenu"
+                            @contextmenu="contextMenu.showContextMenu"
                         />
                     </main>
                     <VideoInfoPanel :video="selectedVideo" />
@@ -840,11 +306,11 @@ onBeforeUnmount(() => {
 
             <!-- グローバルコンテキストメニュー -->
             <VideoContextMenu
-                :is-open="contextMenuState.isOpen"
-                :video="contextMenuState.video"
-                :x="contextMenuState.x"
-                :y="contextMenuState.y"
-                @close="closeContextMenu"
+                :is-open="contextMenu.state.value.isOpen"
+                :video="contextMenu.state.value.video"
+                :x="contextMenu.state.value.x"
+                :y="contextMenu.state.value.y"
+                @close="contextMenu.closeContextMenu"
                 @delete="handleDeleteRequest"
                 @copy-success="
                     () => showToast('success', 'リンクをコピーしました')
@@ -855,9 +321,9 @@ onBeforeUnmount(() => {
             <Teleport to="body">
                 <Transition name="dialog">
                     <div
-                        v-if="deleteDialogState.isOpen"
+                        v-if="deleteDialog.state.value.isOpen"
                         class="dialog-overlay"
-                        @click.self="cancelDelete"
+                        @click.self="deleteDialog.cancelDelete"
                     >
                         <div
                             class="delete-dialog"
@@ -871,26 +337,26 @@ onBeforeUnmount(() => {
                                 この操作は取り消せません。Muxから完全に削除されます。
                             </p>
                             <p
-                                v-if="deleteDialogState.errorMessage"
+                                v-if="deleteDialog.state.value.errorMessage"
                                 class="dialog-error"
                             >
-                                {{ deleteDialogState.errorMessage }}
+                                {{ deleteDialog.state.value.errorMessage }}
                             </p>
                             <div class="dialog-actions">
                                 <button
                                     class="dialog-button dialog-button--cancel"
-                                    @click="cancelDelete"
-                                    :disabled="deleteDialogState.isDeleting"
+                                    @click="deleteDialog.cancelDelete"
+                                    :disabled="deleteDialog.state.value.isDeleting"
                                 >
                                     キャンセル
                                 </button>
                                 <button
                                     class="dialog-button dialog-button--danger"
-                                    @click="confirmDelete"
-                                    :disabled="deleteDialogState.isDeleting"
+                                    @click="deleteDialog.confirmDelete"
+                                    :disabled="deleteDialog.state.value.isDeleting"
                                 >
                                     {{
-                                        deleteDialogState.isDeleting
+                                        deleteDialog.state.value.isDeleting
                                             ? "削除中..."
                                             : "削除する"
                                     }}
@@ -906,11 +372,11 @@ onBeforeUnmount(() => {
             <Teleport to="body">
                 <Transition name="upload-slide">
                     <div
-                        v-if="uploadDialogState.isOpen"
+                        v-if="uploadDialog.uploadDialogState.value.isOpen"
                         class="upload-dialog-nonmodal"
                         :class="{
                             'upload-dialog-nonmodal--minimized':
-                                uploadDialogState.isMinimized,
+                                uploadDialog.uploadDialogState.value.isMinimized,
                         }"
                         role="dialog"
                         aria-labelledby="upload-dialog-title"
@@ -918,22 +384,22 @@ onBeforeUnmount(() => {
                         <!-- 最小化状態: コンパクトバー -->
                         <!-- UX原則: エラーは目立つ視覚的指標で表示（NN/g）、視覚的階層でエラーアイコンを最も目立たせる -->
                         <div
-                            v-if="uploadDialogState.isMinimized"
+                            v-if="uploadDialog.uploadDialogState.value.isMinimized"
                             class="upload-minimized-bar"
                             :class="{
                                 'upload-minimized-bar--error':
-                                    uploadDialogState.errorMessage,
+                                    uploadDialog.uploadDialogState.value.errorMessage,
                             }"
-                            @click="restoreUploadDialog"
+                            @click="uploadDialog.restoreUploadDialog"
                             :title="
-                                uploadDialogState.errorMessage
+                                uploadDialog.uploadDialogState.value.errorMessage
                                     ? 'クリックして詳細を確認'
                                     : 'クリックして展開'
                             "
                         >
                             <!-- エラー時: エラーアイコン -->
                             <svg
-                                v-if="uploadDialogState.errorMessage"
+                                v-if="uploadDialog.uploadDialogState.value.errorMessage"
                                 class="upload-minimized-icon upload-minimized-icon--error"
                                 width="20"
                                 height="20"
@@ -964,14 +430,14 @@ onBeforeUnmount(() => {
 
                             <!-- 進行中: スピナー -->
                             <div
-                                v-else-if="uploadDialogState.isUploading"
+                                v-else-if="uploadDialog.uploadDialogState.value.isUploading"
                                 class="upload-minimized-spinner"
                             ></div>
 
                             <!-- 成功時: チェックマーク（短時間表示） -->
                             <svg
                                 v-else-if="
-                                    uploadDialogState.phase === 'completed'
+                                    uploadDialog.uploadDialogState.value.phase === 'completed'
                                 "
                                 class="upload-minimized-icon upload-minimized-icon--success"
                                 width="20"
@@ -998,30 +464,30 @@ onBeforeUnmount(() => {
 
                             <span class="upload-minimized-text">
                                 {{
-                                    uploadDialogState.errorMessage
+                                    uploadDialog.uploadDialogState.value.errorMessage
                                         ? "アップロード失敗"
-                                        : uploadDialogState.fileName
+                                        : uploadDialog.uploadDialogState.value.fileName
                                 }}
                             </span>
 
                             <!-- 進捗率: エラー時は非表示（認知負荷を減らす） -->
                             <!-- 進捗率または件数: エラー時は非表示 -->
                             <span
-                                v-if="!uploadDialogState.errorMessage"
+                                v-if="!uploadDialog.uploadDialogState.value.errorMessage"
                                 class="upload-minimized-percent"
                             >
                                 <template
-                                    v-if="uploadQueue.stats.value.total > 1"
+                                    v-if="uploadDialog.uploadQueue.stats.value.total > 1"
                                 >
                                     {{
-                                        uploadQueue.stats.value.completed +
-                                        uploadQueue.stats.value.uploading
-                                    }}/{{ uploadQueue.stats.value.total }}
+                                        uploadDialog.uploadQueue.stats.value.completed +
+                                        uploadDialog.uploadQueue.stats.value.uploading
+                                    }}/{{ uploadDialog.uploadQueue.stats.value.total }}
                                 </template>
                                 <template
-                                    v-else-if="uploadDialogState.isUploading"
+                                    v-else-if="uploadDialog.uploadDialogState.value.isUploading"
                                 >
-                                    {{ uploadDialogState.progressPercent }}%
+                                    {{ uploadDialog.uploadDialogState.value.progressPercent }}%
                                 </template>
                             </span>
                         </div>
@@ -1034,18 +500,18 @@ onBeforeUnmount(() => {
                                     class="upload-dialog-title"
                                 >
                                     {{
-                                        uploadDialogState.errorMessage
+                                        uploadDialog.uploadDialogState.value.errorMessage
                                             ? "アップロードエラー"
-                                            : uploadQueue.stats.value.total > 1
-                                              ? `アップロード中 (${uploadQueue.stats.value.completed + uploadQueue.stats.value.uploading}/${uploadQueue.stats.value.total})`
+                                            : uploadDialog.uploadQueue.stats.value.total > 1
+                                              ? `アップロード中 (${uploadDialog.uploadQueue.stats.value.completed + uploadDialog.uploadQueue.stats.value.uploading}/${uploadDialog.uploadQueue.stats.value.total})`
                                               : "アップロード中"
                                     }}
                                 </h2>
                                 <div class="upload-dialog-controls">
                                     <button
-                                        v-if="!uploadDialogState.errorMessage"
+                                        v-if="!uploadDialog.uploadDialogState.value.errorMessage"
                                         class="upload-control-button"
-                                        @click="minimizeUploadDialog"
+                                        @click="uploadDialog.minimizeUploadDialog"
                                         aria-label="最小化"
                                         title="最小化"
                                     >
@@ -1064,9 +530,9 @@ onBeforeUnmount(() => {
                                         </svg>
                                     </button>
                                     <button
-                                        v-if="uploadDialogState.errorMessage"
+                                        v-if="uploadDialog.uploadDialogState.value.errorMessage"
                                         class="upload-control-button"
-                                        @click="closeUploadDialog"
+                                        @click="uploadDialog.closeUploadDialog"
                                         aria-label="閉じる"
                                         title="閉じる"
                                     >
@@ -1088,22 +554,22 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- 現在のファイル: エラー表示 -->
-                            <template v-if="uploadDialogState.errorMessage">
+                            <template v-if="uploadDialog.uploadDialogState.value.errorMessage">
                                 <p class="upload-error-message">
-                                    {{ uploadDialogState.errorMessage }}
+                                    {{ uploadDialog.uploadDialogState.value.errorMessage }}
                                 </p>
                             </template>
 
                             <!-- 現在のファイル: 進捗表示 -->
                             <template v-else>
                                 <p class="upload-filename">
-                                    {{ uploadDialogState.fileName }}
+                                    {{ uploadDialog.uploadDialogState.value.fileName }}
                                 </p>
 
                                 <!-- プログレスバー表示 (uploading_chunk フェーズ時) -->
                                 <!-- UX原則: percent-done indicator は10秒以上の処理に効果的 (NN/g) -->
                                 <div
-                                    v-if="uploadDialogState.showProgressBar"
+                                    v-if="uploadDialog.uploadDialogState.value.showProgressBar"
                                     class="upload-progress-bar-container"
                                 >
                                     <div class="upload-progress-bar-track">
@@ -1111,30 +577,30 @@ onBeforeUnmount(() => {
                                             class="upload-progress-bar-fill"
                                             :class="{
                                                 'upload-progress-bar-fill--complete':
-                                                    uploadDialogState.progressPercent >=
+                                                    uploadDialog.uploadDialogState.value.progressPercent >=
                                                     100,
                                             }"
                                             :style="{
-                                                width: `${uploadDialogState.progressPercent}%`,
+                                                width: `${uploadDialog.uploadDialogState.value.progressPercent}%`,
                                             }"
                                         ></div>
                                     </div>
                                     <div class="upload-progress-info">
                                         <span class="upload-progress-percent"
                                             >{{
-                                                uploadDialogState.progressPercent
+                                                uploadDialog.uploadDialogState.value.progressPercent
                                             }}%</span
                                         >
                                         <span class="upload-progress-bytes">
                                             {{
-                                                formatBytes(
-                                                    uploadDialogState.bytesSent,
+                                                uploadDialog.formatBytes(
+                                                    uploadDialog.uploadDialogState.value.bytesSent,
                                                 )
                                             }}
                                             /
                                             {{
-                                                formatBytes(
-                                                    uploadDialogState.totalBytes,
+                                                uploadDialog.formatBytes(
+                                                    uploadDialog.uploadDialogState.value.totalBytes,
                                                 )
                                             }}
                                         </span>
@@ -1145,44 +611,44 @@ onBeforeUnmount(() => {
                                 <div v-else class="upload-progress">
                                     <div
                                         class="upload-spinner"
-                                        v-if="uploadDialogState.isUploading"
+                                        v-if="uploadDialog.uploadDialogState.value.isUploading"
                                     ></div>
                                     <span
                                         class="upload-phase"
                                         :class="{
                                             'upload-phase--complete':
-                                                uploadDialogState.phase ===
+                                                uploadDialog.uploadDialogState.value.phase ===
                                                 'completed',
                                         }"
                                     >
-                                        {{ uploadDialogState.phaseText }}
+                                        {{ uploadDialog.uploadDialogState.value.phaseText }}
                                     </span>
                                 </div>
 
                                 <!-- フェーズテキスト (プログレスバー表示時も表示) -->
                                 <p
-                                    v-if="uploadDialogState.showProgressBar"
+                                    v-if="uploadDialog.uploadDialogState.value.showProgressBar"
                                     class="upload-phase-text"
                                 >
-                                    {{ uploadDialogState.phaseText }}
+                                    {{ uploadDialog.uploadDialogState.value.phaseText }}
                                 </p>
                             </template>
 
                             <!-- キュー表示 -->
                             <div
-                                v-if="uploadQueue.items.value.length > 1"
+                                v-if="uploadDialog.uploadQueue.items.value.length > 1"
                                 class="upload-queue"
                             >
                                 <div class="upload-queue-header">
                                     <span class="upload-queue-title"
                                         >待機中 ({{
-                                            uploadQueue.stats.value.waiting
+                                            uploadDialog.uploadQueue.stats.value.waiting
                                         }}件)</span
                                     >
                                 </div>
                                 <div class="upload-queue-list">
                                     <div
-                                        v-for="item in uploadQueue.items.value.filter(
+                                        v-for="item in uploadDialog.uploadQueue.items.value.filter(
                                             (i) => i.status === 'waiting',
                                         )"
                                         :key="item.id"
@@ -1193,7 +659,7 @@ onBeforeUnmount(() => {
                                         }}</span>
                                         <button
                                             class="upload-queue-cancel"
-                                            @click="cancelQueueItem(item.id)"
+                                            @click="uploadDialog.cancelQueueItem(item.id)"
                                             aria-label="キャンセル"
                                             title="キャンセル"
                                         >
@@ -1223,7 +689,7 @@ onBeforeUnmount(() => {
             <ToastNotification :toasts="toasts" @close="removeToast" />
 
             <!-- ドラッグアンドドロップオーバーレイ -->
-            <DragDropOverlay :is-dragging="isDragging" />
+            <DragDropOverlay :is-dragging="dragDrop.isDragging.value" />
         </div>
     </div>
 </template>

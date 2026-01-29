@@ -2,26 +2,13 @@
  * アプリケーション状態の型定義
  */
 
+import type { AssetItem } from '../../electron/types/ipc';
+
 /** アプリケーションの画面状態 */
 export type AppScreen = "initializing" | "login" | "library";
 
-/** 動画アイテム（UI表示用） */
-export interface VideoItem {
-  assetId: string;
-  playbackId: string | null;
-  /** 動画の長さ（秒） */
-  duration?: number;
-  /** 動画ステータス */
-  status?: string;
-  /** 解像度 (例: "1080p") */
-  resolutionTier?: string;
-  /** アスペクト比 (例: "16:9") */
-  aspectRatio?: string;
-  /** 最大フレームレート */
-  maxFrameRate?: number;
-  /** 作成日時 (Unix timestamp文字列) */
-  createdAt?: string;
-}
+/** 動画アイテム（UI表示用） - AssetItemのエイリアス */
+export type VideoItem = AssetItem;
 
 /** アプリケーション全体の状態 */
 export interface AppState {

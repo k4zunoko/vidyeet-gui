@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, clipboard } from "electron";
+import { app, BrowserWindow } from "electron";
 import log from "electron-log/main";
 import {
   autoUpdater,
@@ -12,20 +12,16 @@ import {
   IpcChannels,
   type IpcError,
   type UpdateStatusPayload,
-  type LoginRequest,
-  type DeleteRequest,
-  type UploadRequest,
-  type UploadProgress,
 } from "./types/ipc";
+import { registerVidyeetHandlers } from "./ipc/vidyeet";
+import { registerWindowHandlers } from "./ipc/window";
+import { registerClipboardHandlers } from "./ipc/clipboard";
+import { registerAppHandlers } from "./ipc/app";
 import {
-  getStatus,
-  login,
-  logout,
-  getList,
-  deleteAsset,
-  selectFile,
-  upload,
-} from "./services/vidyeetClient";
+  registerUpdaterHandlers,
+  setMainWindow,
+  setUpdaterState,
+} from "./ipc/updater";
 
 // アプリケーション名を設定（electron-log/electron-updaterの初期化前に設定）
 app.name = "Vidyeet";
@@ -59,12 +55,16 @@ const BACKGROUND_UPDATE_CHECK_DELAY_MS = 10_000;
 type UpdateTrigger = "manual" | "background";
 
 let backgroundUpdateCheckTimer: ReturnType<typeof setTimeout> | null = null;
-let updateCheckInProgress = false;
-let updateDownloadInProgress = false;
-let updateDownloadedInfo: UpdateDownloadedEvent | null = null;
-let currentCheckTrigger: UpdateTrigger | null = null;
-let currentDownloadTrigger: UpdateTrigger | null = null;
-let lastDownloadProgress: ProgressInfo | null = null;
+
+// State object for updater
+const updaterState = {
+  updateCheckInProgress: false,
+  updateDownloadInProgress: false,
+  updateDownloadedInfo: null as UpdateDownloadedEvent | null,
+  currentCheckTrigger: null as UpdateTrigger | null,
+  currentDownloadTrigger: null as UpdateTrigger | null,
+  lastDownloadProgress: null as ProgressInfo | null,
+};
 
 function buildUpdateProgress(progress: ProgressInfo) {
   return {
@@ -98,17 +98,17 @@ function clearBackgroundUpdateCheckTimer() {
 }
 
 async function runUpdateCheck(trigger: UpdateTrigger) {
-  if (updateCheckInProgress) {
+  if (updaterState.updateCheckInProgress) {
     return;
   }
 
-  updateCheckInProgress = true;
-  currentCheckTrigger = trigger;
+  updaterState.updateCheckInProgress = true;
+  updaterState.currentCheckTrigger = trigger;
 
   try {
     await autoUpdater.checkForUpdates();
   } finally {
-    updateCheckInProgress = false;
+    updaterState.updateCheckInProgress = false;
   }
 }
 
@@ -128,33 +128,33 @@ function setupAutoUpdater() {
 
   autoUpdater.on("update-available", (info: UpdateInfo) => {
     sendUpdateStatus({ status: "update-available", info });
-    const shouldAutoDownload = currentCheckTrigger === "background";
-    currentCheckTrigger = null;
+    const shouldAutoDownload = updaterState.currentCheckTrigger === "background";
+    updaterState.currentCheckTrigger = null;
 
-    if (!shouldAutoDownload || updateDownloadInProgress) {
+    if (!shouldAutoDownload || updaterState.updateDownloadInProgress) {
       return;
     }
 
-    currentDownloadTrigger = "background";
-    updateDownloadInProgress = true;
+    updaterState.currentDownloadTrigger = "background";
+    updaterState.updateDownloadInProgress = true;
 
     autoUpdater.downloadUpdate().catch((error) => {
-      updateDownloadInProgress = false;
-      currentDownloadTrigger = null;
+      updaterState.updateDownloadInProgress = false;
+      updaterState.currentDownloadTrigger = null;
       log.error("autoUpdater background download failed", error);
     });
   });
 
   autoUpdater.on("update-not-available", (info: UpdateInfo) => {
     sendUpdateStatus({ status: "update-not-available", info });
-    currentCheckTrigger = null;
+    updaterState.currentCheckTrigger = null;
   });
 
   autoUpdater.on("download-progress", (progress: ProgressInfo) => {
-    lastDownloadProgress = progress;
-    updateDownloadInProgress = true;
+    updaterState.lastDownloadProgress = progress;
+    updaterState.updateDownloadInProgress = true;
 
-    if (currentDownloadTrigger === "background") {
+    if (updaterState.currentDownloadTrigger === "background") {
       return;
     }
 
@@ -165,19 +165,19 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on("update-downloaded", (info: UpdateDownloadedEvent) => {
-    updateDownloadInProgress = false;
-    updateDownloadedInfo = info;
-    currentDownloadTrigger = null;
-    lastDownloadProgress = null;
+    updaterState.updateDownloadInProgress = false;
+    updaterState.updateDownloadedInfo = info;
+    updaterState.currentDownloadTrigger = null;
+    updaterState.lastDownloadProgress = null;
     sendUpdateStatus({ status: "update-downloaded", info });
   });
 
   autoUpdater.on("error", (error: unknown) => {
-    updateCheckInProgress = false;
-    updateDownloadInProgress = false;
-    currentCheckTrigger = null;
-    currentDownloadTrigger = null;
-    lastDownloadProgress = null;
+    updaterState.updateCheckInProgress = false;
+    updaterState.updateDownloadInProgress = false;
+    updaterState.currentCheckTrigger = null;
+    updaterState.currentDownloadTrigger = null;
+    updaterState.lastDownloadProgress = null;
     const details = normalizeAutoUpdateErrorDetails(error);
     const resolved = resolveAutoUpdateError(
       details,
@@ -186,6 +186,42 @@ function setupAutoUpdater() {
     log.error("autoUpdater error", error);
     sendUpdateStatus({ status: "error", error: resolved.message });
   });
+}
+
+function normalizeAutoUpdateErrorDetails(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function resolveAutoUpdateError(
+  details: string,
+  fallbackMessage: string,
+): Pick<IpcError, "code" | "message"> {
+  const normalized = details.toLowerCase();
+
+  if (normalized.includes("app-update.yml") && normalized.includes("enoent")) {
+    return {
+      code: "AUTO_UPDATE_CONFIG_MISSING",
+      message:
+        "更新情報が見つかりませんでした。インストール済みのアプリから実行してください。",
+    };
+  }
+
+  if (
+    normalized.includes("unable to find latest version on github") ||
+    normalized.includes("cannot parse releases feed") ||
+    normalized.includes("releases/latest")
+  ) {
+    return {
+      code: "AUTO_UPDATE_RELEASE_NOT_FOUND",
+      message:
+        "最新のリリースが公開されていないため、更新を確認できません。公開後に再試行してください。",
+    };
+  }
+
+  return {
+    code: "AUTO_UPDATE_ERROR",
+    message: fallbackMessage,
+  };
 }
 
 function createWindow() {
@@ -236,282 +272,20 @@ app.on("activate", () => {
 app.whenReady().then(() => {
   setupAutoUpdater();
   createWindow();
+  setMainWindow(win);
+  setUpdaterState(updaterState);
   scheduleBackgroundUpdateCheck();
+
+  // =============================================================================
+  // Register IPC Handlers
+  // =============================================================================
+  registerVidyeetHandlers();
+  registerClipboardHandlers();
+  registerWindowHandlers(() => win);
+  registerAppHandlers();
+  registerUpdaterHandlers(
+    clearBackgroundUpdateCheckTimer,
+    runUpdateCheck,
+  );
 });
 
-// =============================================================================
-// IPC Handlers
-// =============================================================================
-
-/**
- * vidyeet:status - 認証状態を取得
- */
-ipcMain.handle(IpcChannels.STATUS, async () => {
-  return await getStatus();
-});
-
-/**
- * vidyeet:login - ログイン
- */
-ipcMain.handle(IpcChannels.LOGIN, async (_event, request: LoginRequest) => {
-  return await login(request);
-});
-
-/**
- * vidyeet:logout - ログアウト
- */
-ipcMain.handle(IpcChannels.LOGOUT, async () => {
-  return await logout();
-});
-
-/**
- * vidyeet:list - アセット一覧を取得
- */
-ipcMain.handle(IpcChannels.LIST, async () => {
-  return await getList();
-});
-
-/**
- * vidyeet:delete - アセットを削除
- */
-ipcMain.handle(IpcChannels.DELETE, async (_event, request: DeleteRequest) => {
-  return await deleteAsset(request);
-});
-
-/**
- * vidyeet:selectFile - ファイル選択ダイアログを表示
- */
-ipcMain.handle(IpcChannels.SELECT_FILE, async () => {
-  return await selectFile();
-});
-
-/**
- * vidyeet:upload - 動画をアップロード
- * 進捗はイベントでRendererに送信
- */
-ipcMain.handle(IpcChannels.UPLOAD, async (event, request: UploadRequest) => {
-  return await upload(request, (progress: UploadProgress) => {
-    // 進捗をRendererに送信
-    event.sender.send("vidyeet:uploadProgress", progress);
-  });
-});
-
-/**
- * clipboard:write - クリップボードにテキストを書き込み
- */
-ipcMain.handle(IpcChannels.CLIPBOARD_WRITE, (_event, text: string) => {
-  clipboard.writeText(text);
-});
-
-// =============================================================================
-// Window Control IPC Handlers
-// =============================================================================
-
-/**
- * window:minimize - ウィンドウを最小化
- */
-ipcMain.handle("window:minimize", () => {
-  win?.minimize();
-});
-
-/**
- * window:maximize - ウィンドウを最大化/元に戻す
- */
-ipcMain.handle("window:maximize", () => {
-  if (win?.isMaximized()) {
-    win.unmaximize();
-  } else {
-    win?.maximize();
-  }
-});
-
-/**
- * window:close - ウィンドウを閉じる
- */
-ipcMain.handle("window:close", () => {
-  win?.close();
-});
-
-/**
- * window:isMaximized - 最大化状態を取得
- */
-ipcMain.handle("window:isMaximized", () => {
-  return win?.isMaximized() ?? false;
-});
-
-// =============================================================================
-// Application Info IPC Handler
-// =============================================================================
-
-/**
- * app:getVersion - アプリケーションのバージョンと情報を取得
- */
-ipcMain.handle("app:getVersion", () => {
-  return {
-    version: app.getVersion(),
-    appName: "Vidyeet",
-    description: "Safe and Convenient Video Uploading and Management.",
-    author: "Vidyeet Team",
-    license: "MIT",
-    repository: "https://github.com/k4zunoko/vidyeet-gui",
-  };
-});
-
-// =============================================================================
-// Auto Updater IPC Handlers
-// =============================================================================
-
-function normalizeAutoUpdateErrorDetails(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function resolveAutoUpdateError(
-  details: string,
-  fallbackMessage: string,
-): Pick<IpcError, "code" | "message"> {
-  const normalized = details.toLowerCase();
-
-  if (normalized.includes("app-update.yml") && normalized.includes("enoent")) {
-    return {
-      code: "AUTO_UPDATE_CONFIG_MISSING",
-      message:
-        "更新情報が見つかりませんでした。インストール済みのアプリから実行してください。",
-    };
-  }
-
-  if (
-    normalized.includes("unable to find latest version on github") ||
-    normalized.includes("cannot parse releases feed") ||
-    normalized.includes("releases/latest")
-  ) {
-    return {
-      code: "AUTO_UPDATE_RELEASE_NOT_FOUND",
-      message:
-        "最新のリリースが公開されていないため、更新を確認できません。公開後に再試行してください。",
-    };
-  }
-
-  return {
-    code: "AUTO_UPDATE_ERROR",
-    message: fallbackMessage,
-  };
-}
-
-function buildAutoUpdateError(
-  error: unknown,
-  fallbackMessage: string,
-): IpcError {
-  const details = normalizeAutoUpdateErrorDetails(error);
-  const resolved = resolveAutoUpdateError(details, fallbackMessage);
-
-  return {
-    code: resolved.code,
-    message: resolved.message,
-    details,
-  };
-}
-
-function buildAutoUpdateDisabledError(): IpcError {
-  return {
-    code: "AUTO_UPDATE_DISABLED",
-    message: "Auto update is only available in packaged builds.",
-  };
-}
-
-ipcMain.handle(IpcChannels.UPDATE_CHECK, async () => {
-  if (!app.isPackaged) {
-    return buildAutoUpdateDisabledError();
-  }
-
-  clearBackgroundUpdateCheckTimer();
-
-  if (updateDownloadedInfo) {
-    sendUpdateStatus({
-      status: "update-downloaded",
-      info: updateDownloadedInfo,
-    });
-    return { success: true };
-  }
-
-  if (updateDownloadInProgress) {
-    currentDownloadTrigger = "manual";
-
-    if (lastDownloadProgress) {
-      sendUpdateStatus({
-        status: "download-progress",
-        progress: buildUpdateProgress(lastDownloadProgress),
-      });
-    } else {
-      sendUpdateStatus({ status: "download-progress" });
-    }
-
-    return { success: true };
-  }
-
-  try {
-    await runUpdateCheck("manual");
-    return { success: true };
-  } catch (error) {
-    log.error("autoUpdater checkForUpdates failed", error);
-    return buildAutoUpdateError(
-      error,
-      "更新の確認に失敗しました。ネットワークを確認して再試行してください。",
-    );
-  }
-});
-
-ipcMain.handle(IpcChannels.UPDATE_DOWNLOAD, async () => {
-  if (!app.isPackaged) {
-    return buildAutoUpdateDisabledError();
-  }
-
-  clearBackgroundUpdateCheckTimer();
-
-  if (updateDownloadedInfo) {
-    sendUpdateStatus({
-      status: "update-downloaded",
-      info: updateDownloadedInfo,
-    });
-    return { success: true };
-  }
-
-  if (updateDownloadInProgress) {
-    currentDownloadTrigger = "manual";
-
-    if (lastDownloadProgress) {
-      sendUpdateStatus({
-        status: "download-progress",
-        progress: buildUpdateProgress(lastDownloadProgress),
-      });
-    } else {
-      sendUpdateStatus({ status: "download-progress" });
-    }
-
-    return { success: true };
-  }
-
-  currentDownloadTrigger = "manual";
-  updateDownloadInProgress = true;
-
-  try {
-    await autoUpdater.downloadUpdate();
-    return { success: true };
-  } catch (error) {
-    updateDownloadInProgress = false;
-    currentDownloadTrigger = null;
-    log.error("autoUpdater downloadUpdate failed", error);
-    return buildAutoUpdateError(
-      error,
-      "更新のダウンロードに失敗しました。ネットワークを確認して再試行してください。",
-    );
-  }
-});
-
-ipcMain.handle(IpcChannels.UPDATE_INSTALL, () => {
-  if (!app.isPackaged) {
-    return buildAutoUpdateDisabledError();
-  }
-
-  autoUpdater.quitAndInstall(true, true);
-  return { success: true };
-});

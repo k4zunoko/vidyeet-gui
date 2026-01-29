@@ -5,7 +5,7 @@
  * @see docs/CLI_CONTRACT.md
  */
 
-import { runCli } from "./cliRunner";
+import { runCli, resolveCliPath } from "./cliRunner";
 import type {
   IpcError,
   StatusResponse,
@@ -273,18 +273,6 @@ export async function selectFile(): Promise<SelectFileResponse | IpcError> {
 // =============================================================================
 
 /**
- * CLIパスを取得（開発時はbin/、配布時はresources/bin/）
- */
-function getCliPath(): string {
-  const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
-  if (isDev) {
-    return path.join(process.env.APP_ROOT ?? "", "bin", "vidyeet-cli.exe");
-  }
-  // 配布時: resources/bin/vidyeet-cli.exe
-  return path.join(process.resourcesPath, "bin", "vidyeet-cli.exe");
-}
-
-/**
  * 動画をアップロード
  * @param request アップロードリクエスト
  * @param onProgress 進捗コールバック
@@ -294,7 +282,7 @@ export function upload(
   onProgress?: (progress: UploadProgress) => void,
 ): Promise<UploadResponse | IpcError> {
   return new Promise((resolve) => {
-    const cliPath = getCliPath();
+    const cliPath = resolveCliPath();
     const args = ["--machine", "upload", request.filePath, "--progress"];
 
     const child = spawn(cliPath, args, {
