@@ -1,76 +1,131 @@
-# コーディングエージェント向け情報
+# Coding Agent Instructions
 
-**MuxAPIをラップしたCLI（`bin/vidyeet-cli.exe`）を実行するWindows専用デスクトップアプリケーション**
+**Windows desktop application wrapping Mux API via CLI (`bin/vidyeet-cli.exe`)**
 
-## プロジェクト概要
+## Project Overview
 
-| 項目 | 内容 |
-|------|------|
-| **目的** | Muxへの動画アップロード・管理をGUIで安全・快適に行える |
-| **技術スタック** | Vue 3 + Vite + Electron + TypeScript |
-| **ターゲット環境** | Windows専用デスクトップアプリ |
-| **CLI連携** | `bin/vidyeet-cli.exe` による Mux API の単一責務化 |
+| Item | Details |
+|------|---------|
+| **Purpose** | GUI for safe, convenient video uploading & management to Mux |
+| **Stack** | Vue 3 + Vite + Electron + TypeScript |
+| **Target** | Windows only (no cross-platform) |
+| **CLI Integration** | `bin/vidyeet-cli.exe` handles Mux API + authentication |
 
-## ドキュメント索引
+## Quick Start
 
-詳細な設計・実装指針は `docs/` に整理されています。
-
-**最初に読むドキュメント** (推奨順序):
-1. `docs/README.md` — プロジェクト最小概要・ナビゲーション・メタ情報
-2. `docs/DESIGN_PHILOSOPHY.md` — 設計原則・責務分離
-3. `docs/REQUIREMENTS.md` — 現実装の機能・非機能要求
-4. `docs/UI_SPEC.md` — 画面仕様・状態遷移
-
-その他の詳細ドキュメントは `docs/README.md` の「実装ガイド」セクションを参照してください。
-
----
-## AGENTS: Skill（`~\.config\opencode\skills`）使用ポリシー
-
-目的:
-- コーディングエージェントは、受け取ったプロンプトを解析して、`~\.config\opencode\skills`（以下「スキル」）を使用すべきかを判断する責任を負います。
-
-必須ルール:
-1. プロンプトを受け取ったら必ずスキル適用判定を行う。  
-   - 明示的にスキル名が書かれている場合は即時使用すること。
-   - SKILL.mdに記載されているnameやdescriptionを参照し、プロンプト内容と照合すること。
-   - 明示がない場合でも、プロンプトの意図・タスク内容がスキルの能力範囲に一致するなら「必ず」スキルを使用すること。
-
-2. 使用前に確認が必要な曖昧さがある場合は、最短で明確化質問を行う。ただし質問によって処理が大きく遅延するなら、「暫定で最適と思われるスキルを実行」し、その旨をユーザに通知しつつ並行して確認を求める。
-
-3. スキル呼び出しは明示的に出力に示せ（自己検証のため）：
-   - 出力例（必須）: `USING SKILL: <skill-name>` または `SKILL INVOKED: <skill-name> - <brief reason>` を最初の行か情報欄に含めること。
-
----
-
-## OpenCode: Windows(cmd.exe) の引用符破壊による出力欠落（回避策）
-
-### TL;DR
-- **原則**: `cmd.exe /c "..."` を **ネストして実行しない**（二重ラップで引用が壊れやすい）
-- **推奨**: 組み込みコマンドは **素のコマンドで実行**（例: `echo Hello World`）
-- **必要なら**: `cmd.exe` は **二重引用**で保護（`""...""`）
-- **代替**: 引用が複雑なら **PowerShell** へ迂回
-
-### 症状
-`cmd.exe /c "echo Hello World"` を実行すると `Hello World` が出ず、`Microsoft Windows [Version ...]` のバナーのみが出る。
-
-### 原因（要点のみ）
-OpenCode 側でコマンドをシェル実行（ラップ）する状況で、`cmd.exe /c "..."` の **内側の `"` が外側の引用と衝突**し、`/c` の引数が崩れて **cmd が対話起動扱い**になる。
-
-### 回避策（推奨順）
-#### 1) cmd.exe を明示しない（最優先）
-OpenCode の `bash` ツールはシェルコマンド実行用途なので、Windows 組み込みも素で投げる。
-```text
-echo Hello World
-````
-
-#### 2) 引用が複雑なら PowerShell に寄せる
-
-```text
-powershell -NoProfile -Command "Write-Output 'Hello World'"
+```bash
+npm run dev          # Development
+npm run build:win    # Build (Windows installer)
+npm run build:dir    # Build (unpacked, for testing)
+npx vue-tsc --noEmit # Type check
 ```
 
-### エージェント向け DO / DON'T
+**No test framework configured.** No lint/format commands.
 
-*   ✅ DO: **素のコマンド**で実行（`echo`, `dir`, `type` など）
-*   ✅ DO: 文字列やパスの引用が増えるなら **PowerShell へ迂回**
-*   ❌ DON'T: `cmd.exe /c "..."` を **さらに別のシェル実行にネスト**して渡す
+## Architecture
+
+```
+Renderer (Vue) → Preload (contextBridge) → Main (Electron) → CLI (vidyeet-cli.exe)
+```
+
+- **Renderer**: UI only. No direct OS/CLI access
+- **Preload**: Exposes `window.vidyeet`, `window.windowControl`, `window.clipboard`
+- **Main**: IPC handlers, spawns CLI, parses JSON output
+- **CLI**: Manages Mux API + credentials. GUI only receives success/failure
+
+## Directory Structure
+
+```
+src/components/   # Shared UI components
+src/composables/  # Vue composables (useXxx pattern)
+src/features/     # Feature modules (auth/, library/, player/)
+src/types/        # App-level TypeScript types
+electron/         # Main process, preload, services, IPC types
+docs/             # CLI_CONTRACT.md, UX_PSYCHOLOGY.md
+bin/              # vidyeet-cli.exe (dev mode)
+```
+
+## Code Style
+
+### TypeScript
+- **Strict mode** (`strict: true`), no unused variables/params
+- **Explicit return types** on exported functions
+- **Type guards** for runtime checking: `isIpcError(value)`
+
+### Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Variables/Functions | camelCase | `selectedVideo`, `handleUpload` |
+| Types/Interfaces | PascalCase | `VideoItem`, `UploadProgress` |
+| Components | PascalCase | `TitleBar.vue`, `VideoPlayer.vue` |
+| Composables | useXxx | `useUploadQueue` |
+| IPC Channels | namespace:action | `vidyeet:upload` |
+| CSS Variables | --color-* | `--color-bg`, `--color-primary` |
+
+### Vue Components
+
+```vue
+<script setup lang="ts">
+/** Component description in Japanese */
+import { ref } from "vue";
+import type { VideoItem } from "../types/app";
+
+defineProps<{ video?: VideoItem }>();
+const emit = defineEmits<{ select: [video: VideoItem] }>();
+</script>
+
+<template>
+  <Component @some-event="handler" />
+</template>
+
+<style scoped>
+.class { color: var(--color-text); }
+</style>
+```
+
+### Error Handling
+
+```typescript
+const result = await window.vidyeet.upload(request);
+if (isIpcError(result)) {
+  showToast("error", result.message);
+  return;
+}
+// result is typed as success response
+```
+
+### CLI Response Conversion
+CLI uses snake_case → convert to camelCase in adapters (`playback_ids` → `playbackId`)
+
+## Constraints
+
+**NEVER:**
+- Access Node.js APIs directly from Renderer
+- Store credentials in GUI (CLI handles auth)
+- Skip error checking on IPC calls
+- Use `any` type (use `unknown` with type guards)
+
+## Reference Documents (read in order)
+1. `docs/README.md` - Navigation
+2. `docs/REQUIREMENTS.md` - Features
+3. `docs/CLI_CONTRACT.md` - CLI commands & JSON schemas
+4. `docs/UX_PSYCHOLOGY.md` - UI principles
+
+## Common Tasks
+
+### Adding a New IPC Channel
+1. Add to `IpcChannels` in `electron/types/ipc.ts`
+2. Define request/response types
+3. Add handler in `electron/main.ts`
+4. Expose in `electron/preload.ts`
+
+### Adding a New Composable
+1. Create `src/composables/useXxx.ts`
+2. Use `ref`/`computed` for reactive state
+3. Return object with state and methods
+
+### Adding a New Feature View
+1. Create folder `src/features/xxx/`
+2. Main view: `XxxView.vue`
+3. Import in `App.vue`

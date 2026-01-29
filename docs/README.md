@@ -20,9 +20,9 @@
 本ドキュメント群の目的は LLM（コーディングエージェント）がプロジェクト状況を正確に理解することにあります。  
 最初は以下の順序で読んでください：
 
-1. **[DESIGN_PHILOSOPHY.md](./DESIGN_PHILOSOPHY.md)** — 設計原則・責務分離の全体方針
-2. **[REQUIREMENTS.md](./REQUIREMENTS.md)** — 現実装の機能・非機能要求
-3. **[UI_SPEC.md](./UI_SPEC.md)** — 画面仕様・状態遷移・ユーザー操作フロー
+1. **[REQUIREMENTS.md](./REQUIREMENTS.md)** — 現実装の機能・非機能要求
+2. **[CLI_CONTRACT.md](./CLI_CONTRACT.md)** — CLI と GUI の責務分離・通信仕様
+3. **[UX_PSYCHOLOGY.md](./UX_PSYCHOLOGY.md)** — UI 設計の心理学的原則と実装指針
 
 ---
 
@@ -30,47 +30,26 @@
 
 ### アーキテクチャ・インテグレーション
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** 
-  - レイヤ構成（Renderer / Preload / Main / CLI）、責務分離、データフロー
-  - 複数ファイルアップロードのキュー実装
-
 - **[CLI_CONTRACT.md](./CLI_CONTRACT.md)** 
   - `bin/vidyeet-cli.exe` のコマンド・JSON スキーマ
   - 呼び出し約束と出力形式
+  - レイヤ構成（Renderer / Preload / Main / CLI）と責務分離
 
-- **[IPC_CONTRACT.md](./IPC_CONTRACT.md)** 
-  - Electron IPC チャネル、メッセージ型、通信仕様
+### 実装の詳細はコード内に記載
 
-### エラー・品質
-
-- **[ERROR_HANDLING.md](./ERROR_HANDLING.md)** 
-  - エラー分類、ユーザー向け表示、ログ、再試行戦略
-
-### 実装詳細（機能ごと）
-
-- **[PROGRESS_INTERPOLATION_IMPLEMENTATION.md](./PROGRESS_INTERPOLATION_IMPLEMENTATION.md)** 
-  - アップロード進捗を滑らかに表示する補間実装
-
-- **[UPLOAD_QUEUE_IMPLEMENTATION.md](./UPLOAD_QUEUE_IMPLEMENTATION.md)** 
-  - 複数ファイルアップロードのキュー管理実装（`useUploadQueue` composable）
+- `src/composables/useProgressInterpolation.ts`: アップロード進捗を滑らかに表示する補間実装
+- `src/composables/useUploadQueue.ts`: 複数ファイルアップロードのキュー管理実装
+- `src/composables/README.md`: composable の使用方法とAPI
 
 ### ビルド・デプロイ
 
 - **[WINDOWS_BUILD.md](./WINDOWS_BUILD.md)** 
   - Windows ビルド手順、NSIS インストーラー設定
 
-- **[RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)** 
-  - リリース前のチェックリスト、ビルド手順
-
 ### デザイン・UX
 
 - **[UX_PSYCHOLOGY.md](./UX_PSYCHOLOGY.md)** 
   - UI 設計の心理学的原則（進捗補間実装の根拠など）
-
-### 将来の拡張
-
-- **[ROADMAP.md](./ROADMAP.md)** 
-  - 機能追加の優先順位と判断基準
 
 ---
 
@@ -78,13 +57,11 @@
 
 **重要**: これらのドキュメントは実装状況と常に一致するよう、以下のタイミングで更新してください：
 
-1. **設計判断の変更時**: DESIGN_PHILOSOPHY.md, 該当レイヤのドキュメント
-2. **機能追加・仕様変更時**: REQUIREMENTS.md および UI_SPEC.md
-3. **実装・データフロー変更時**: ARCHITECTURE.md、CLI_CONTRACT.md、IPC_CONTRACT.md
-4. **エラー処理追加時**: ERROR_HANDLING.md
-5. **ビルド設定変更時**: WINDOWS_BUILD.md
+1. **機能追加・仕様変更時**: REQUIREMENTS.md
+2. **ビルド設定変更時**: WINDOWS_BUILD.md
+3. **設計判断変更時**: CLI_CONTRACT.md、UX_PSYCHOLOGY.md
 
-CodingAgent は常にこれらのドキュメントを参照してサポートを提供します。
+詳細な設計情報とコード内ドキュメントは `src/` / `electron/` 配下の JSDoc コメントとREADMEを参照してください。
 
 ---
 

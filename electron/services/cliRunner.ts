@@ -204,7 +204,7 @@ function createError(
  * 開発時のみデバッグログを出力
  * 本番ビルドでは出力されない（将来的にファイルログへ移行可能）
  *
- * @see docs/ERROR_HANDLING.md - ログ方針
+ * ログ戦略の詳細は docs/README.md、CLI_CONTRACT.md 参照
  */
 function logDebug(context: string, data: { stdout?: string; stderr?: string; exitCode?: number | null }): void {
   if (app.isPackaged) {

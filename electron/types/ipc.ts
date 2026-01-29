@@ -2,7 +2,7 @@
  * IPC Contract Types
  *
  * Renderer（Vue）から Main（Electron）へ要求する操作の型定義
- * @see docs/IPC_CONTRACT.md
+ * 詳細は electron/preload.ts のコメント、CLI_CONTRACT.md 参照
  */
 
 // =============================================================================

@@ -3,6 +3,18 @@
 
 $ErrorActionPreference = "Stop"
 
+# Safety Check: Verify current branch
+$currentBranch = git rev-parse --abbrev-ref HEAD
+$expectedBranch = "main"
+
+if ($currentBranch -ne $expectedBranch) {
+    Write-Host "Error: You are on branch '$currentBranch', but this script expects '$expectedBranch'" -ForegroundColor Red
+    Write-Host "Please switch to '$expectedBranch' before running this script." -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "[OK] Confirmed on branch: $currentBranch" -ForegroundColor Green
+
 # Read version from package.json
 $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
 $currentVersion = $packageJson.version
