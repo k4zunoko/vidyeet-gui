@@ -5,15 +5,15 @@ $ErrorActionPreference = "Stop"
 
 # Safety Check: Verify current branch
 $currentBranch = git rev-parse --abbrev-ref HEAD
-$expectedBranch = "develop"
 
-if ($currentBranch -ne $expectedBranch) {
-    Write-Host "Error: You are on branch '$currentBranch', but this script expects '$expectedBranch'" -ForegroundColor Red
-    Write-Host "Please switch to '$expectedBranch' before running this script." -ForegroundColor Yellow
+# Allow running from any branch EXCEPT main. If on main, abort to avoid accidental operations.
+if ($currentBranch -eq "main") {
+    Write-Host "Error: This script must NOT be run on 'main' branch. Current branch: '$currentBranch'" -ForegroundColor Red
+    Write-Host "Please switch to a feature or integration branch before running this script." -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "[OK] Confirmed on branch: $currentBranch" -ForegroundColor Green
+Write-Host "[OK] Running on branch: $currentBranch" -ForegroundColor Green
 
 # Check if there are any uncommitted changes
 $gitStatus = git status --porcelain
