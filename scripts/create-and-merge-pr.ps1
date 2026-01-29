@@ -13,7 +13,7 @@ if ($currentBranch -ne $expectedBranch) {
     exit 1
 }
 
-Write-Host "✓ Confirmed on branch: $currentBranch" -ForegroundColor Green
+Write-Host "[OK] Confirmed on branch: $currentBranch" -ForegroundColor Green
 
 # Check if there are any uncommitted changes
 $gitStatus = git status --porcelain
@@ -22,7 +22,7 @@ if ($gitStatus) {
     exit 1
 }
 
-Write-Host "✓ Working directory is clean" -ForegroundColor Green
+Write-Host "[OK] Working directory is clean" -ForegroundColor Green
 
 Write-Host "Creating pull request..." -ForegroundColor Cyan
 
@@ -34,7 +34,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "✓ Pull request created" -ForegroundColor Green
+Write-Host "[OK] Pull request created" -ForegroundColor Green
 Write-Host $prOutput
 
 # Extract PR number from output
@@ -87,7 +87,7 @@ while ($attempt -lt $maxAttempts) {
 
         # Display check results
         foreach ($check in $rollup) {
-            $statusSymbol = if ($check.state -eq "SUCCESS") { "✓" } else { "✗" }
+            $statusSymbol = if ($check.state -eq "SUCCESS") { "[OK]" } else { "[NG]" }
             $color = if ($check.state -eq "SUCCESS") { "Green" } else { "Red" }
             Write-Host "$statusSymbol $($check.name): $($check.state) (conclusion: $($check.conclusion))" -ForegroundColor $color
         }
@@ -123,5 +123,5 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "✓ Pull request merged successfully!" -ForegroundColor Green
+Write-Host "[OK] Pull request merged successfully!" -ForegroundColor Green
 Write-Host "Merged PR #$prNumber into main" -ForegroundColor Green

@@ -13,7 +13,7 @@ if ($currentBranch -ne $expectedBranch) {
     exit 1
 }
 
-Write-Host "✓ Confirmed on branch: $currentBranch" -ForegroundColor Green
+Write-Host "[OK] Confirmed on branch: $currentBranch" -ForegroundColor Green
 
 # Read version from package.json
 $packageJson = Get-Content "package.json" -Raw | ConvertFrom-Json
