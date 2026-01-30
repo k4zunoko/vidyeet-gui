@@ -11,7 +11,7 @@ function getInitialLocale(): SupportedLocale {
   if (stored === 'ja' || stored === 'en') {
     return stored;
   }
-  return 'ja'; // Default to Japanese
+  return 'en'; // Default to English
 }
 
 export function saveLocale(locale: SupportedLocale): void {
@@ -21,7 +21,7 @@ export function saveLocale(locale: SupportedLocale): void {
 export const i18n = createI18n<[MessageSchema], SupportedLocale>({
   legacy: false,
   locale: getInitialLocale(),
-  fallbackLocale: 'ja',
+  fallbackLocale: 'en',
   messages: {
     ja: jaMessages,
     en: enMessages,
