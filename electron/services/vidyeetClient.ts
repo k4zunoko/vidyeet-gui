@@ -170,7 +170,7 @@ export async function getList(): Promise<ListResponse | IpcError> {
   if (!Array.isArray(data.data)) {
     return {
       code: "CLI_BAD_JSON",
-      message: "CLI list の data が配列ではありません",
+      message: "CLI list data is not an array",
       details: { received: typeof data.data },
     };
   }
@@ -245,11 +245,11 @@ export async function selectFile(): Promise<SelectFileResponse | IpcError> {
   const result = await dialog.showOpenDialog(
     focusedWindow ?? (undefined as any),
     {
-      title: "アップロードする動画を選択",
+      title: "Select video to upload",
       defaultPath: lastSelectedDirectory,
       filters: [
         {
-          name: "動画ファイル",
+          name: "Video Files",
           extensions: VIDEO_EXTENSIONS,
         },
       ],
@@ -333,7 +333,7 @@ export function upload(
           if (json.success === false && json.error) {
             resolve({
               code: "CLI_NON_ZERO_EXIT",
-              message: json.error.message || "アップロードに失敗しました",
+              message: json.error.message || "Upload failed",
               details: json.error,
             });
           }
@@ -350,7 +350,7 @@ export function upload(
     child.on("error", (err) => {
       resolve({
         code: "CLI_NOT_FOUND",
-        message: `CLIの起動に失敗しました: ${err.message}`,
+        message: `Failed to launch CLI: ${err.message}`,
       });
     });
 
@@ -359,7 +359,7 @@ export function upload(
       if (code !== 0 && !stdout.includes('"success":true')) {
         resolve({
           code: "CLI_NON_ZERO_EXIT",
-          message: `アップロードに失敗しました (exit code: ${code})`,
+          message: `Upload failed (exit code: ${code})`,
           details: { stderr, stdout },
         });
       }
