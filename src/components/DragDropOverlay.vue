@@ -11,12 +11,15 @@
  *
  * @see docs/UX_PSYCHOLOGY.md - UI/UX設計の原則
  */
+import { useI18n } from 'vue-i18n';
 
 interface Props {
     isDragging: boolean;
 }
 
 defineProps<Props>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -30,8 +33,8 @@ defineProps<Props>();
                         <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                 </div>
-                <p class="overlay-message">ここにファイルをドロップしてアップロード</p>
-                <p class="overlay-hint">動画ファイルのみ対応しています</p>
+                <p class="overlay-message">{{ t('dragDrop.message') }}</p>
+                <p class="overlay-hint">{{ t('dragDrop.hint') }}</p>
             </div>
         </div>
     </Transition>

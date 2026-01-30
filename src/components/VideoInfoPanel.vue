@@ -5,11 +5,14 @@
  * 選択中の動画のメタ情報を表示
  */
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { VideoItem } from '../types/app';
 
 const props = defineProps<{
   video: VideoItem | null;
 }>();
+
+const { t } = useI18n();
 
 /**
  * 再生時間をフォーマット (mm:ss)
@@ -47,16 +50,16 @@ function formatFrameRate(fps?: number): string {
 }
 
 const infoItems = computed(() => {
-  if (!props.video) return [];
+   if (!props.video) return [];
 
-  return [
-    { label: '時間', value: formatDuration(props.video.duration) },
-    { label: '解像度', value: props.video.resolutionTier || '-' },
-    { label: 'アスペクト比', value: props.video.aspectRatio || '-' },
-    { label: 'フレームレート', value: formatFrameRate(props.video.maxFrameRate) },
-    { label: '作成日', value: formatDate(props.video.createdAt) },
-    { label: 'ステータス', value: props.video.status || '-' },
-  ];
+   return [
+     { label: t('infoPanel.duration'), value: formatDuration(props.video.duration) },
+     { label: t('infoPanel.resolution'), value: props.video.resolutionTier || '-' },
+     { label: t('infoPanel.aspectRatio'), value: props.video.aspectRatio || '-' },
+     { label: t('infoPanel.frameRate'), value: formatFrameRate(props.video.maxFrameRate) },
+     { label: t('infoPanel.createdAt'), value: formatDate(props.video.createdAt) },
+     { label: t('infoPanel.status'), value: props.video.status || '-' },
+   ];
 });
 </script>
 

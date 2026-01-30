@@ -6,9 +6,12 @@
  * @see docs/UI_SPEC.md - 再生（Player）
  */
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Hls from 'hls.js';
 import type { VideoItem } from '../../types/app';
 import { getHlsUrl } from '../../utils/muxUrls';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   video: VideoItem | null;
@@ -168,26 +171,26 @@ onUnmounted(() => {
 
 <template>
   <div class="player-container">
-    <!-- 未選択状態 -->
-    <div v-if="!video" class="player-empty">
-      <div class="empty-content">
-        <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9.5 12l4.5 3V9z"/>
-        </svg>
-        <p class="empty-message">動画を選択してください</p>
-        <p class="empty-hint">左の一覧から動画をクリック</p>
-      </div>
-    </div>
+     <!-- 未選択状態 -->
+     <div v-if="!video" class="player-empty">
+       <div class="empty-content">
+         <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor">
+           <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9.5 12l4.5 3V9z"/>
+         </svg>
+         <p class="empty-message">{{ t('player.selectVideo') }}</p>
+         <p class="empty-hint">{{ t('player.selectHint') }}</p>
+       </div>
+     </div>
 
     <!-- プレイヤー本体 -->
     <div v-else class="player-wrapper">
-      <!-- ローディング -->
-      <Transition name="fade">
-        <div v-if="playerState === 'loading'" class="player-overlay">
-          <div class="loading-spinner"></div>
-          <p class="loading-text">読み込み中...</p>
-        </div>
-      </Transition>
+       <!-- ローディング -->
+       <Transition name="fade">
+         <div v-if="playerState === 'loading'" class="player-overlay">
+           <div class="loading-spinner"></div>
+           <p class="loading-text">{{ t('player.loading') }}</p>
+         </div>
+       </Transition>
 
       <!-- エラー -->
       <Transition name="fade">
@@ -196,12 +199,12 @@ onUnmounted(() => {
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
           </svg>
           <p class="error-message">{{ errorMessage }}</p>
-          <button class="retry-button" @click="handleRetry">
-            <svg class="button-icon" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-            </svg>
-            再試行
-          </button>
+           <button class="retry-button" @click="handleRetry">
+             <svg class="button-icon" viewBox="0 0 24 24" fill="currentColor">
+               <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+             </svg>
+             {{ t('player.retry') }}
+           </button>
         </div>
       </Transition>
 

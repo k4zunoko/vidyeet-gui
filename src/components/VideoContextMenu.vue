@@ -13,6 +13,7 @@
  * - Escキー/外部クリックで閉じる
  */
 import { ref, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { VideoItem } from '../types/app';
 import { getMp4Url } from '../utils/muxUrls';
 
@@ -35,6 +36,8 @@ const emit = defineEmits<{
   /** コピー成功 */
   copySuccess: [];
 }>();
+
+const { t } = useI18n();
 
 // コンテキストメニューの参照
 const menuRef = ref<HTMLElement | null>(null);
@@ -110,7 +113,7 @@ onUnmounted(() => {
         class="context-menu"
         :style="{ left: `${x}px`, top: `${y}px` }"
         role="menu"
-        aria-label="動画メニュー"
+        :aria-label="t('contextMenu.ariaLabel')"
       >
         <button
           class="context-menu-item"
@@ -120,7 +123,7 @@ onUnmounted(() => {
           <svg class="menu-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
           </svg>
-          <span>リンクをコピー</span>
+          <span>{{ t('contextMenu.copyLink') }}</span>
         </button>
         <div class="context-menu-divider"></div>
         <button
@@ -131,7 +134,7 @@ onUnmounted(() => {
           <svg class="menu-icon" viewBox="0 0 24 24" fill="currentColor">
             <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
           </svg>
-          <span>削除</span>
+          <span>{{ t('contextMenu.delete') }}</span>
         </button>
       </div>
     </Transition>

@@ -1,0 +1,175 @@
+{
+  "app": {
+    "initializing": "起動中...",
+    "initializationError": "初期化に失敗しました。アプリを再起動してください。",
+    "loading": "読み込み中",
+    "deleteDialog": {
+       "title": "動画を削除しますか？",
+       "message": "この操作は取り消せません。Muxから完全に削除されます。",
+       "cancelButton": "キャンセル",
+       "deleteButton": "削除する",
+       "deleting": "削除中...",
+       "error": "動画の削除に失敗しました。",
+       "success": "動画を削除しました"
+     },
+    "upload": {
+      "failed": "アップロード失敗",
+      "error": "アップロードエラー",
+      "inProgress": "アップロード中",
+      "minimizing": "最小化",
+      "closing": "閉じる",
+      "showDetails": "クリックして詳細を確認",
+      "expand": "クリックして展開",
+      "waiting": "待機中",
+      "items": "件",
+      "cancel": "キャンセル"
+    },
+    "toasts": {
+      "linkCopied": "リンクをコピーしました"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "close": "閉じる",
+    "update": {
+      "title": "アップデート",
+      "subtitle": "最新版を確認",
+      "checking": "確認中",
+      "checkButton": "確認",
+      "status": {
+        "checking": "確認中",
+        "available": "アップデート利用可能",
+        "latest": "最新版です",
+        "downloading": "ダウンロード中",
+        "ready": "インストール準備完了",
+        "error": "エラーが発生しました",
+        "unchecked": "未確認"
+      },
+      "description": {
+        "checking": "確認しています...",
+        "available": "新しいバージョンがあります",
+        "latest": "お使いのバージョンが最新です",
+        "downloading": "ダウンロード中です...",
+        "ready": "インストール準備ができました",
+        "error": "確認中にエラーが発生しました",
+        "unchecked": "まだ確認していません"
+      },
+      "progress": {
+        "label": "進捗",
+        "note": "このプロセスには数分かかる場合があります"
+      },
+      "downloadButton": "ダウンロード",
+      "restarting": "再起動中",
+      "installButton": "インストール",
+      "retryButton": "再試行",
+      "autoUpdateError": "アップデートチェック中にエラーが発生しました"
+    },
+    "account": {
+      "title": "アカウント",
+      "logout": "ログアウト"
+    },
+    "appInfo": {
+      "title": "アプリ情報",
+      "version": "バージョン",
+      "cliPath": "CLIパス",
+      "loading": "読み込み中",
+      "error": "エラー"
+    },
+    "language": {
+      "label": "言語",
+      "ja": "日本語",
+      "en": "English"
+    }
+  },
+  "login": {
+    "appTitle": "Vidyeet",
+    "subtitle": "Mux アカウントでログイン",
+    "tokenId": {
+      "label": "Token ID",
+      "placeholder": "Token ID を入力"
+    },
+    "tokenSecret": {
+      "label": "Token Secret",
+      "placeholder": "Token Secret を入力"
+    },
+    "error": "認証に失敗しました。Token ID / Token Secret を確認して再試行してください。",
+    "loggingIn": "ログイン中",
+    "loginButton": "ログイン",
+    "unexpectedError": "予期しないエラーが発生しました。再試行してください。",
+    "hint": {
+      "prefix": "Token は",
+      "link": "Mux Dashboard",
+      "suffix": "で取得できます"
+    }
+  },
+  "library": {
+    "error": {
+      "loadFailed": "動画一覧の取得に失敗しました。再試行してください。",
+      "unexpected": "予期しないエラーが発生しました。"
+    },
+    "retry": "再試行",
+    "empty": {
+      "title": "動画がありません",
+      "hint": "Mux にアップロードされた動画がここに表示されます"
+    },
+    "uploadButton": "動画をアップロード",
+    "uploadAria": "動画をアップロード"
+  },
+  "player": {
+    "selectVideo": "動画を選択してください",
+    "selectHint": "左の一覧から動画をクリック",
+    "loading": "読み込み中...",
+    "retry": "再試行"
+  },
+   "videoCard": {
+     "ariaPrefix": "動画",
+     "unplayable": "再生不可",
+     "playing": "再生中"
+   },
+   "contextMenu": {
+     "ariaLabel": "動画メニュー",
+     "copyLink": "リンクをコピー",
+     "delete": "削除"
+   },
+   "infoPanel": {
+     "duration": "時間",
+     "resolution": "解像度",
+     "aspectRatio": "アスペクト比",
+     "frameRate": "フレームレート",
+     "createdAt": "作成日",
+     "status": "ステータス"
+   },
+   "dragDrop": {
+     "message": "ここにファイルをドロップしてアップロード",
+     "hint": "動画ファイルのみ対応しています"
+   },
+   "titleBar": {
+     "reload": "リロード",
+     "settings": "設定",
+     "restore": "元に戻す",
+     "maximize": "最大化",
+     "close": "閉じる"
+   },
+   "sideDrawer": {
+     "upload": "アップロード",
+     "logout": "ログアウト"
+   },
+   "toast": {
+     "close": "閉じる"
+   },
+  "uploadPhase": {
+    "validating": "検証中",
+    "validationComplete": "検証完了",
+    "preparing": "準備中",
+    "prepareComplete": "準備完了",
+    "uploading": "アップロード中",
+    "processing": "処理中",
+    "completed": "完了",
+    "done": "完了",
+    "starting": "開始"
+  },
+  "uploadErrors": {
+    "pathError": "ファイルパスが不正です",
+    "uploadFailed": "アップロードに失敗しました"
+  }
+}

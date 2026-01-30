@@ -11,6 +11,7 @@
  */
 
 import { ref, type Ref } from "vue";
+import { useI18n } from "vue-i18n";
 import type { VideoItem, ToastType } from "../types/app";
 
 /**
@@ -60,13 +61,14 @@ export interface UseDeleteDialogOptions {
  * @returns 削除ダイアログの状態と操作メソッド
  */
 export function useDeleteDialog(options: UseDeleteDialogOptions): UseDeleteDialog {
-  // 削除ダイアログの状態
-  const state = ref<DeleteDialogState>({
-    isOpen: false,
-    video: null,
-    isDeleting: false,
-    errorMessage: null,
-  });
+   // 削除ダイアログの状態
+   const state = ref<DeleteDialogState>({
+     isOpen: false,
+     video: null,
+     isDeleting: false,
+     errorMessage: null,
+   });
+   const { t } = useI18n();
 
   /**
    * 削除ダイアログを開く
@@ -109,15 +111,15 @@ export function useDeleteDialog(options: UseDeleteDialogOptions): UseDeleteDialo
       // 削除成功: コールバックを呼び出す
       options.onDeleted(video.assetId);
 
-      // ダイアログを閉じる
-      state.value.isOpen = false;
-      state.value.video = null;
+       // ダイアログを閉じる
+       state.value.isOpen = false;
+       state.value.video = null;
 
-      // トースト通知を表示
-      options.showToast("success", "動画を削除しました");
-    } catch (err) {
-      // エラーメッセージを設定
-      state.value.errorMessage = "削除中にエラーが発生しました。";
+       // トースト通知を表示
+       options.showToast("success", t("app.deleteDialog.success"));
+     } catch (err) {
+       // エラーメッセージを設定
+       state.value.errorMessage = t("app.deleteDialog.error");
     } finally {
       state.value.isDeleting = false;
     }

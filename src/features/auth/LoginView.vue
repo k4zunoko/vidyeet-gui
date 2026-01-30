@@ -6,7 +6,10 @@
  * @see docs/UI_SPEC.md - 認証画面（Login）
  */
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { isIpcError } from '../../../electron/types/ipc';
+
+const { t } = useI18n();
 
 const emit = defineEmits<{
   /** ログイン成功時 */
@@ -46,14 +49,14 @@ async function handleLogin() {
 
     if (isIpcError(result)) {
       // エラー: 入力を保持して再試行可能に
-      errorMessage.value = `認証に失敗しました。Token ID / Token Secret を確認して再試行してください。`;
+      errorMessage.value = t('login.error');
       return;
     }
 
     // 成功: 親に通知
     emit('success');
   } catch (err) {
-    errorMessage.value = '予期しないエラーが発生しました。再試行してください。';
+    errorMessage.value = t('login.unexpectedError');
   } finally {
     isLoading.value = false;
   }
@@ -63,58 +66,58 @@ async function handleLogin() {
 <template>
   <div class="login-container">
     <div class="login-card">
-      <h1 class="login-title">Vidyeet</h1>
-      <p class="login-subtitle">Mux アカウントでログイン</p>
+      <h1 class="login-title">{{ t('login.appTitle') }}</h1>
+      <p class="login-subtitle">{{ t('login.subtitle') }}</p>
 
-      <form class="login-form" @submit.prevent="handleLogin">
-        <div class="form-group">
-          <label for="token-id" class="form-label">Token ID</label>
-          <input
-            id="token-id"
-            v-model="tokenId"
-            type="text"
-            class="form-input"
-            placeholder="Token ID を入力"
-            :disabled="isLoading"
-            autocomplete="off"
-          />
-        </div>
+       <form class="login-form" @submit.prevent="handleLogin">
+         <div class="form-group">
+           <label for="token-id" class="form-label">{{ t('login.tokenId.label') }}</label>
+           <input
+             id="token-id"
+             v-model="tokenId"
+             type="text"
+             class="form-input"
+             :placeholder="t('login.tokenId.placeholder')"
+             :disabled="isLoading"
+             autocomplete="off"
+           />
+         </div>
 
-        <div class="form-group">
-          <label for="token-secret" class="form-label">Token Secret</label>
-          <input
-            id="token-secret"
-            v-model="tokenSecret"
-            type="password"
-            class="form-input"
-            placeholder="Token Secret を入力"
-            :disabled="isLoading"
-            autocomplete="off"
-          />
-        </div>
+         <div class="form-group">
+           <label for="token-secret" class="form-label">{{ t('login.tokenSecret.label') }}</label>
+           <input
+             id="token-secret"
+             v-model="tokenSecret"
+             type="password"
+             class="form-input"
+             :placeholder="t('login.tokenSecret.placeholder')"
+             :disabled="isLoading"
+             autocomplete="off"
+           />
+         </div>
 
         <!-- エラー表示 -->
         <div v-if="errorMessage" class="error-message">
           {{ errorMessage }}
         </div>
 
-        <button
-          type="submit"
-          class="login-button"
-          :disabled="isSubmitDisabled"
-        >
-          <span v-if="isLoading" class="loading-text">ログイン中...</span>
-          <span v-else>ログイン</span>
-        </button>
+         <button
+           type="submit"
+           class="login-button"
+           :disabled="isSubmitDisabled"
+         >
+           <span v-if="isLoading" class="loading-text">{{ t('login.loggingIn') }}</span>
+           <span v-else>{{ t('login.loginButton') }}</span>
+         </button>
       </form>
 
-      <p class="login-hint">
-        Token は
-        <a href="https://dashboard.mux.com/settings/access-tokens" target="_blank" rel="noopener">
-          Mux Dashboard
-        </a>
-        で取得できます
-      </p>
+       <p class="login-hint">
+         {{ t('login.hint.prefix') }}
+         <a href="https://dashboard.mux.com/settings/access-tokens" target="_blank" rel="noopener">
+           {{ t('login.hint.link') }}
+         </a>
+         {{ t('login.hint.suffix') }}
+       </p>
     </div>
   </div>
 </template>
