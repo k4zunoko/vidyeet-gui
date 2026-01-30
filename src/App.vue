@@ -9,6 +9,7 @@
  */
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import type { AppScreen, VideoItem } from "./types/app";
+import { useI18n } from "vue-i18n";
 import { isIpcError } from "../electron/types/ipc";
 import { useToast } from "./composables/useToast";
 import { useContextMenu } from "./composables/useContextMenu";
@@ -39,6 +40,9 @@ const isSettingsOpen = ref(false);
 
 // LibraryViewへの参照（reload用）
 const libraryRef = ref<InstanceType<typeof LibraryView> | null>(null);
+
+// i18n
+const { t } = useI18n();
 
 // =============================================================================
 // コンテキストメニュー状態（グローバル管理）
@@ -81,9 +85,9 @@ const dragDrop = useDragDrop({
 const deleteDialog = useDeleteDialog({
   onDelete: async (assetId: string) => {
     const result = await window.vidyeet.delete({ assetId });
-    if (isIpcError(result)) {
-      throw new Error("動画の削除に失敗しました。");
-    }
+     if (isIpcError(result)) {
+       throw new Error(t('app.deleteDialog.error'));
+     }
   },
   onDeleted: (assetId: string) => {
     // 削除成功: 一覧から削除
@@ -121,10 +125,10 @@ async function checkAuth() {
         } else {
             currentScreen.value = "login";
         }
-    } catch (err) {
-        initError.value = "初期化に失敗しました。アプリを再起動してください。";
-        currentScreen.value = "login";
-    }
+     } catch (err) {
+         initError.value = t('app.initializationError');
+         currentScreen.value = "login";
+     }
 }
 
 /**
@@ -262,7 +266,7 @@ onBeforeUnmount(() => {
             >
                 <div class="initializing-content">
                     <div class="loading-spinner"></div>
-                    <p class="initializing-text">起動中...</p>
+                    <p class="initializing-text">{{ $t('app.initializing') }}</p>
                 </div>
             </div>
 
@@ -313,7 +317,7 @@ onBeforeUnmount(() => {
                 @close="contextMenu.closeContextMenu"
                 @delete="handleDeleteRequest"
                 @copy-success="
-                    () => showToast('success', 'リンクをコピーしました')
+                    () => showToast('success', $t('app.toasts.linkCopied'))
                 "
             />
 
@@ -331,10 +335,10 @@ onBeforeUnmount(() => {
                             aria-labelledby="delete-dialog-title"
                         >
                             <h2 id="delete-dialog-title" class="dialog-title">
-                                動画を削除しますか？
+                                {{ $t('app.deleteDialog.title') }}
                             </h2>
                             <p class="dialog-message">
-                                この操作は取り消せません。Muxから完全に削除されます。
+                                {{ $t('app.deleteDialog.message') }}
                             </p>
                             <p
                                 v-if="deleteDialog.state.value.errorMessage"
@@ -348,7 +352,7 @@ onBeforeUnmount(() => {
                                     @click="deleteDialog.cancelDelete"
                                     :disabled="deleteDialog.state.value.isDeleting"
                                 >
-                                    キャンセル
+                                    {{ $t('app.deleteDialog.cancelButton') }}
                                 </button>
                                 <button
                                     class="dialog-button dialog-button--danger"
@@ -357,8 +361,8 @@ onBeforeUnmount(() => {
                                 >
                                     {{
                                         deleteDialog.state.value.isDeleting
-                                            ? "削除中..."
-                                            : "削除する"
+                                            ? $t('app.deleteDialog.deleting')
+                                            : $t('app.deleteDialog.deleteButton')
                                     }}
                                 </button>
                             </div>
@@ -393,8 +397,8 @@ onBeforeUnmount(() => {
                             @click="uploadDialog.restoreUploadDialog"
                             :title="
                                 uploadDialog.uploadDialogState.value.errorMessage
-                                    ? 'クリックして詳細を確認'
-                                    : 'クリックして展開'
+                                    ? $t('app.upload.showDetails')
+                                    : $t('app.upload.expand')
                             "
                         >
                             <!-- エラー時: エラーアイコン -->
@@ -465,7 +469,7 @@ onBeforeUnmount(() => {
                             <span class="upload-minimized-text">
                                 {{
                                     uploadDialog.uploadDialogState.value.errorMessage
-                                        ? "アップロード失敗"
+                                        ? $t('app.upload.failed')
                                         : uploadDialog.uploadDialogState.value.fileName
                                 }}
                             </span>
@@ -501,10 +505,10 @@ onBeforeUnmount(() => {
                                 >
                                     {{
                                         uploadDialog.uploadDialogState.value.errorMessage
-                                            ? "アップロードエラー"
+                                            ? $t('app.upload.error')
                                             : uploadDialog.uploadQueue.stats.value.total > 1
-                                              ? `アップロード中 (${uploadDialog.uploadQueue.stats.value.completed + uploadDialog.uploadQueue.stats.value.uploading}/${uploadDialog.uploadQueue.stats.value.total})`
-                                              : "アップロード中"
+                                              ? $t('app.upload.inProgress') + ` (${uploadDialog.uploadQueue.stats.value.completed + uploadDialog.uploadQueue.stats.value.uploading}/${uploadDialog.uploadQueue.stats.value.total})`
+                                              : $t('app.upload.inProgress')
                                     }}
                                 </h2>
                                 <div class="upload-dialog-controls">
@@ -512,8 +516,8 @@ onBeforeUnmount(() => {
                                         v-if="!uploadDialog.uploadDialogState.value.errorMessage"
                                         class="upload-control-button"
                                         @click="uploadDialog.minimizeUploadDialog"
-                                        aria-label="最小化"
-                                        title="最小化"
+                                        :aria-label="$t('app.upload.minimizing')"
+                                        :title="$t('app.upload.minimizing')"
                                     >
                                         <svg
                                             width="16"
@@ -533,8 +537,8 @@ onBeforeUnmount(() => {
                                         v-if="uploadDialog.uploadDialogState.value.errorMessage"
                                         class="upload-control-button"
                                         @click="uploadDialog.closeUploadDialog"
-                                        aria-label="閉じる"
-                                        title="閉じる"
+                                        :aria-label="$t('app.upload.closing')"
+                                        :title="$t('app.upload.closing')"
                                     >
                                         <svg
                                             width="16"
@@ -641,9 +645,9 @@ onBeforeUnmount(() => {
                             >
                                 <div class="upload-queue-header">
                                     <span class="upload-queue-title"
-                                        >待機中 ({{
+                                        >{{ $t('app.upload.waiting') }} ({{
                                             uploadDialog.uploadQueue.stats.value.waiting
-                                        }}件)</span
+                                        }}{{ $t('app.upload.items') }})</span
                                     >
                                 </div>
                                 <div class="upload-queue-list">
@@ -660,8 +664,8 @@ onBeforeUnmount(() => {
                                         <button
                                             class="upload-queue-cancel"
                                             @click="uploadDialog.cancelQueueItem(item.id)"
-                                            aria-label="キャンセル"
-                                            title="キャンセル"
+                                            :aria-label="$t('app.upload.cancel')"
+                                            :title="$t('app.upload.cancel')"
                                         >
                                             <svg
                                                 width="12"

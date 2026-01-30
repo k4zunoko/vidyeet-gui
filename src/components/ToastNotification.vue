@@ -14,17 +14,20 @@
  * @see docs/UI_SPEC.md - トースト通知
  * @see docs/UX_PSYCHOLOGY.md - ピーク・エンドの法則
  */
+import { useI18n } from 'vue-i18n';
 import type { ToastItem } from "../types/app";
 
 defineProps<{
-    /** 表示するトースト一覧 */
-    toasts: ToastItem[];
-}>();
+     /** 表示するトースト一覧 */
+     toasts: ToastItem[];
+ }>();
 
 const emit = defineEmits<{
-    /** トーストを閉じる */
-    close: [id: number];
-}>();
+     /** トーストを閉じる */
+     close: [id: number];
+ }>();
+
+const { t } = useI18n();
 
 /**
  * タイプ別のアイコンを返す
@@ -61,10 +64,10 @@ function getIcon(type: ToastItem["type"]): string {
                     </svg>
                     <span class="toast-message">{{ toast.message }}</span>
                     <button
-                        class="toast-close"
-                        @click="emit('close', toast.id)"
-                        aria-label="閉じる"
-                    >
+                         class="toast-close"
+                         @click="emit('close', toast.id)"
+                         :aria-label="t('toast.close')"
+                     >
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path
                                 d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"

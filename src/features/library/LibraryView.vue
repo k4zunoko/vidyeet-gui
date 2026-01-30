@@ -6,9 +6,12 @@
  * @see docs/UI_SPEC.md - 一覧画面（Library）
  */
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { VideoItem } from '../../types/app';
 import { isIpcError } from '../../../electron/types/ipc';
 import VideoCard from './VideoCard.vue';
+
+const { t } = useI18n();
 
 defineProps<{
   /** 選択中の動画 */
@@ -44,7 +47,7 @@ async function fetchVideos() {
     const result = await window.vidyeet.list();
 
     if (isIpcError(result)) {
-      errorMessage.value = '動画一覧の取得に失敗しました。再試行してください。';
+      errorMessage.value = t('library.error.loadFailed');
       return;
     }
 
@@ -59,7 +62,7 @@ async function fetchVideos() {
       createdAt: item.createdAt,
     }));
   } catch (err) {
-    errorMessage.value = '予期しないエラーが発生しました。';
+    errorMessage.value = t('library.error.unexpected');
   } finally {
     isLoading.value = false;
   }
@@ -116,7 +119,7 @@ onMounted(() => {
       <button 
         class="upload-button"
         role="button"
-        aria-label="動画をアップロード"
+        :aria-label="t('library.uploadAria')"
         @click="handleUploadClick"
         @keydown.enter.prevent="handleUploadClick"
         @keydown.space.prevent="handleUploadClick"
@@ -125,7 +128,7 @@ onMounted(() => {
           <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path d="M12 5v14M5 12h14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <span class="upload-text">動画をアップロード</span>
+          <span class="upload-text">{{ t('library.uploadButton') }}</span>
         </div>
       </button>
 
@@ -142,14 +145,14 @@ onMounted(() => {
       <div v-else-if="errorMessage" class="error-state">
         <p class="error-message">{{ errorMessage }}</p>
         <button class="retry-button" @click="reload">
-          再試行
+          {{ t('library.retry') }}
         </button>
       </div>
 
       <!-- 空状態 -->
       <div v-else-if="videos.length === 0" class="empty-state">
-        <p class="empty-message">動画がありません</p>
-        <p class="empty-hint">Mux にアップロードされた動画がここに表示されます</p>
+        <p class="empty-message">{{ t('library.empty.title') }}</p>
+        <p class="empty-hint">{{ t('library.empty.hint') }}</p>
       </div>
 
       <!-- 動画グリッド -->

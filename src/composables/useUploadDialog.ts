@@ -20,6 +20,7 @@
 
 import { ref } from "vue";
 import type { Ref } from "vue";
+import { useI18n } from "vue-i18n";
 import type { UploadProgress } from "../../electron/types/ipc";
 import { isIpcError } from "../../electron/types/ipc";
 import type { ToastType } from "../types/app";
@@ -100,9 +101,10 @@ export interface UseUploadDialog {
  * @returns アップロードダイアログの状態と操作関数
  */
 export function useUploadDialog(
-  options: UseUploadDialogOptions,
+   options: UseUploadDialogOptions,
 ): UseUploadDialog {
-  const { showToast, onUploadComplete } = options;
+   const { showToast, onUploadComplete } = options;
+   const { t } = useI18n();
 
   // ===========================================================================
   // State
@@ -132,27 +134,28 @@ export function useUploadDialog(
   // Helper Functions
   // ===========================================================================
 
-  /**
-   * アップロードフェーズを日本語に変換
-   *
-   * UX原則:
-   * - 認知負荷軽減: 短く明確なテキスト
-   * - フレーミング効果: ポジティブな表現を使用
-   */
-  function getPhaseText(phase: string): string {
-    const phaseMap: Record<string, string> = {
-      validating_file: "ファイルを検証中...",
-      file_validated: "ファイル検証完了",
-      creating_direct_upload: "アップロード準備中...",
-      direct_upload_created: "アップロード準備完了",
-      uploading_file: "アップロード中...",
-      uploading_chunk: "アップロード中...",
-      file_uploaded: "アップロード完了",
-      waiting_for_asset: "処理中...",
-      completed: "完了",
-    };
-    return phaseMap[phase] || phase;
-  }
+   /**
+    * アップロードフェーズを日本語に変換
+    *
+    * UX原則:
+    * - 認知負荷軽減: 短く明確なテキスト
+    * - フレーミング効果: ポジティブな表現を使用
+    */
+   function getPhaseText(phase: string): string {
+     const phaseKeys: Record<string, string> = {
+       validating_file: "uploadPhase.validating",
+       file_validated: "uploadPhase.validationComplete",
+       creating_direct_upload: "uploadPhase.preparing",
+       direct_upload_created: "uploadPhase.prepareComplete",
+       uploading_file: "uploadPhase.uploading",
+       uploading_chunk: "uploadPhase.uploading",
+       file_uploaded: "uploadPhase.completed",
+       waiting_for_asset: "uploadPhase.processing",
+       completed: "uploadPhase.done",
+     };
+     const key = phaseKeys[phase];
+     return key ? t(key) : phase;
+   }
 
   /**
    * バイト数を人間が読みやすい形式に変換
@@ -313,12 +316,12 @@ export function useUploadDialog(
       return;
     }
 
-    // アップロード状態を初期化
-    uploadDialogState.value.fileName = item.fileName;
-    uploadDialogState.value.phase = "starting";
-    uploadDialogState.value.phaseText = "開始中...";
-    uploadDialogState.value.isUploading = true;
-    uploadDialogState.value.errorMessage = null;
+     // アップロード状態を初期化
+     uploadDialogState.value.fileName = item.fileName;
+     uploadDialogState.value.phase = "starting";
+     uploadDialogState.value.phaseText = t("uploadPhase.starting");
+     uploadDialogState.value.isUploading = true;
+     uploadDialogState.value.errorMessage = null;
     uploadDialogState.value.progressPercent = 0;
     uploadDialogState.value.currentChunk = 0;
     uploadDialogState.value.totalChunks = 0;
@@ -341,8 +344,8 @@ export function useUploadDialog(
       uploadDialogState.value.errorMessage = uploadResult.message;
       cleanup();
 
-      // エラートースト表示
-      showToast("error", `${item.fileName}: アップロード失敗`);
+       // エラートースト表示
+       showToast("error", `${item.fileName}: ${t("uploadErrors.uploadFailed")}`);
 
       // 次のファイルを処理（少し待ってから）
       setTimeout(() => {
@@ -351,11 +354,11 @@ export function useUploadDialog(
       return;
     }
 
-    // 成功: キューに記録
-    uploadQueue.markCurrentCompleted(uploadResult.assetId);
-    uploadDialogState.value.phase = "completed";
-    uploadDialogState.value.phaseText = "アップロード完了！";
-    uploadDialogState.value.isUploading = false;
+     // 成功: キューに記録
+     uploadQueue.markCurrentCompleted(uploadResult.assetId);
+     uploadDialogState.value.phase = "completed";
+     uploadDialogState.value.phaseText = `${t("uploadPhase.completed")}！`;
+     uploadDialogState.value.isUploading = false;
 
     // 個別リロード: 成功したファイルをすぐに一覧に追加
     onUploadComplete();
@@ -378,12 +381,12 @@ export function useUploadDialog(
   async function handleMultipleFiles(files: File[]) {
     // ファイルパスを取得
     const fileItems: { filePath: string; fileName: string }[] = [];
-    for (const file of files) {
-      const filePath = (file as any).path || "";
-      if (!filePath) {
-        showToast("error", `${file.name}: ファイルパスの取得に失敗しました`);
-        continue;
-      }
+     for (const file of files) {
+       const filePath = (file as any).path || "";
+       if (!filePath) {
+         showToast("error", `${file.name}: ${t("uploadErrors.pathError")}`);
+         continue;
+       }
       fileItems.push({
         filePath,
         fileName: file.name,

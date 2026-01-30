@@ -15,6 +15,8 @@
  * @see docs/UI_SPEC.md - 設定画面仕様
  */
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
+import { useI18n } from "vue-i18n";
+import { useLanguage } from "../composables/useLanguage";
 import {
     isIpcError,
     type UpdateProgress,
@@ -36,8 +38,10 @@ const emit = defineEmits<{
 
 // アプリケーション情報
 import packageJson from "../../package.json";
+const { t } = useI18n();
+const { currentLanguage, setLanguage } = useLanguage();
 const appVersion = ref(packageJson.version);
-const cliPath = ref("読み込み中...");
+const cliPath = ref(t("settings.appInfo.loading"));
 
 type LocalUpdateStatus = "idle" | UpdateStatus;
 
@@ -83,47 +87,47 @@ const updateStatusVariant = computed(() => {
 const updateStatusLabel = computed(() => {
     switch (updateStatus.value) {
         case "checking-for-update":
-            return "確認中";
+            return t("settings.update.status.checking");
         case "update-available":
-            return "更新あり";
+            return t("settings.update.status.available");
         case "update-not-available":
-            return "最新";
+            return t("settings.update.status.latest");
         case "download-progress":
-            return "ダウンロード中";
+            return t("settings.update.status.downloading");
         case "update-downloaded":
-            return "準備完了";
+            return t("settings.update.status.ready");
         case "error":
-            return "エラー";
+            return t("settings.update.status.error");
         default:
-            return "未確認";
+            return t("settings.update.status.unchecked");
     }
 });
 
 const updateStatusDescription = computed(() => {
     switch (updateStatus.value) {
         case "checking-for-update":
-            return "最新バージョンを確認しています。";
+            return t("settings.update.description.checking");
         case "update-available":
-            return "新しいバージョンが見つかりました。";
+            return t("settings.update.description.available");
         case "update-not-available":
-            return "すでに最新のバージョンです。";
+            return t("settings.update.description.latest");
         case "download-progress":
-            return "更新ファイルをダウンロードしています。";
+            return t("settings.update.description.downloading");
         case "update-downloaded":
-            return "インストールの準備ができました。再起動で更新が適用されます。";
+            return t("settings.update.description.ready");
         case "error":
             return (
                 updateErrorMessage.value ??
-                "更新の処理に失敗しました。時間をおいて再試行してください。"
+                t("settings.update.description.error")
             );
         default:
-            return "手動で更新を確認できます。";
+            return t("settings.update.description.unchecked");
     }
 });
 
 const updateVersionLabel = computed(() => {
     const version = getUpdateVersion(updateInfo.value);
-    return version ? `新しいバージョン: ${version}` : null;
+    return version ? `${t("settings.update.newVersion")} ${version}` : null;
 });
 
 const downloadPercent = computed(() => {
@@ -165,7 +169,7 @@ async function loadCliPath() {
         // 現在は仮実装としてpackage.jsonから取得
         cliPath.value = "bin/vidyeet-cli.exe";
     } catch {
-        cliPath.value = "取得できませんでした";
+        cliPath.value = t("settings.appInfo.error");
     }
 }
 
@@ -241,7 +245,7 @@ function setUpdateError(message: string) {
 function setUpdateErrorFromIpc(message?: string) {
     const resolvedMessage =
         message ??
-        "更新の処理に失敗しました。ネットワークを確認して再試行してください。";
+        t("settings.update.errorNetwork");
     setUpdateError(resolvedMessage);
 }
 
@@ -260,7 +264,7 @@ async function handleCheckForUpdates() {
 
     if (isIpcError(result)) {
         if (result.code === "AUTO_UPDATE_DISABLED") {
-            setUpdateError("自動更新はパッケージ版のみ対応しています。");
+            setUpdateError(t("settings.update.autoUpdateError"));
             return;
         }
 
@@ -281,7 +285,7 @@ async function handleDownloadUpdate() {
 
     if (isIpcError(result)) {
         if (result.code === "AUTO_UPDATE_DISABLED") {
-            setUpdateError("自動更新はパッケージ版のみ対応しています。");
+            setUpdateError(t("settings.update.autoUpdateError"));
             return;
         }
 
@@ -302,7 +306,7 @@ async function handleInstallUpdate() {
     if (isIpcError(result)) {
         isInstalling.value = false;
         if (result.code === "AUTO_UPDATE_DISABLED") {
-            setUpdateError("自動更新はパッケージ版のみ対応しています。");
+            setUpdateError(t("settings.update.autoUpdateError"));
             return;
         }
 
@@ -323,7 +327,7 @@ function handleUpdateStatus(payload: UpdateStatusPayload) {
     if (payload.status === "error") {
         updateErrorMessage.value =
             payload.error ??
-            "更新の処理に失敗しました。ネットワークを確認して再試行してください。";
+            t("settings.update.errorNetwork");
         isInstalling.value = false;
     } else {
         updateErrorMessage.value = null;
@@ -385,12 +389,12 @@ onBeforeUnmount(() => {
             >
                 <!-- ヘッダー -->
                 <div class="settings-header">
-                    <h2 id="settings-title" class="settings-title">設定</h2>
+                    <h2 id="settings-title" class="settings-title">{{ t("settings.title") }}</h2>
                     <button
                         class="settings-close"
                         @click="handleClose"
-                        aria-label="閉じる"
-                        title="閉じる"
+                        :aria-label="t('settings.aria.close')"
+                        :title="t('settings.aria.close')"
                     >
                         <svg
                             width="16"
@@ -410,6 +414,40 @@ onBeforeUnmount(() => {
 
                 <!-- コンテンツ -->
                 <div class="settings-content">
+                    <!-- 言語設定セクション -->
+                    <section class="settings-section">
+                        <div class="settings-section-header">
+                            <div class="settings-section-heading">
+                                <h3
+                                    class="settings-section-title settings-section-title--prominent"
+                                >
+                                    <span class="language-icon">🌐</span>
+                                    {{ t("settings.language.label") }}
+                                </h3>
+                            </div>
+                            <div class="language-selector">
+                                <button
+                                    :class="[
+                                        'lang-button',
+                                        { active: currentLanguage === 'ja' },
+                                    ]"
+                                    @click="setLanguage('ja')"
+                                >
+                                    {{ t("settings.language.ja") }}
+                                </button>
+                                <button
+                                    :class="[
+                                        'lang-button',
+                                        { active: currentLanguage === 'en' },
+                                    ]"
+                                    @click="setLanguage('en')"
+                                >
+                                    {{ t("settings.language.en") }}
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
                     <!-- アップデートセクション -->
                     <section class="settings-section settings-section--update">
                         <div class="settings-section-header">
@@ -417,10 +455,10 @@ onBeforeUnmount(() => {
                                 <h3
                                     class="settings-section-title settings-section-title--prominent"
                                 >
-                                    アップデート
+                                    {{ t("settings.update.title") }}
                                 </h3>
                                 <p class="settings-section-subtitle">
-                                    必要なときに手動で更新を確認できます。
+                                    {{ t("settings.update.subtitle") }}
                                 </p>
                             </div>
                             <div class="settings-section-actions">
@@ -435,7 +473,7 @@ onBeforeUnmount(() => {
                                         aria-hidden="true"
                                     ></span>
                                     <span>{{
-                                        isChecking ? "確認中..." : "更新を確認"
+                                        isChecking ? t("settings.update.checkingButton") : t("settings.update.checkButton")
                                     }}</span>
                                 </button>
                             </div>
@@ -463,7 +501,7 @@ onBeforeUnmount(() => {
                                     v-if="lastCheckedAt"
                                     class="settings-update-meta"
                                 >
-                                    最終確認:
+                                    {{ t("settings.update.lastChecked") }}
                                     {{ formatDateTime(lastCheckedAt) }}
                                 </span>
                             </div>
@@ -476,7 +514,7 @@ onBeforeUnmount(() => {
                                 class="settings-update-progress"
                             >
                                 <div class="settings-progress-header">
-                                    <span>ダウンロード進捗</span>
+                                    <span>{{ t("settings.update.progress.label") }}</span>
                                     <span v-if="downloadPercent !== null">
                                         {{ downloadPercent }}%
                                     </span>
@@ -485,14 +523,14 @@ onBeforeUnmount(() => {
                                     class="settings-progress-bar"
                                     max="100"
                                     :value="downloadPercent ?? 0"
-                                    aria-label="更新ダウンロードの進捗"
+                                    :aria-label="t('settings.aria.updateProgress')"
                                 ></progress>
                                 <div class="settings-progress-meta">
                                     <span v-if="downloadSummary">{{
                                         downloadSummary
                                     }}</span>
                                     <span class="settings-progress-note">
-                                        この画面を閉じてもダウンロードは継続します。
+                                        {{ t("settings.update.progress.note") }}
                                     </span>
                                 </div>
                             </div>
@@ -511,7 +549,7 @@ onBeforeUnmount(() => {
                                     @click="handleDownloadUpdate"
                                     :disabled="isDownloading"
                                 >
-                                    ダウンロード
+                                    {{ t("settings.update.downloadButton") }}
                                 </button>
                                 <button
                                     v-else-if="isUpdateDownloaded"
@@ -526,8 +564,8 @@ onBeforeUnmount(() => {
                                     ></span>
                                     <span>{{
                                         isInstalling
-                                            ? "再起動中..."
-                                            : "インストールして再起動"
+                                            ? t("settings.update.restarting")
+                                            : t("settings.update.installButton")
                                     }}</span>
                                 </button>
                                 <button
@@ -536,7 +574,7 @@ onBeforeUnmount(() => {
                                     @click="handleCheckForUpdates"
                                     :disabled="!canCheckForUpdates"
                                 >
-                                    再試行
+                                    {{ t("settings.update.retryButton") }}
                                 </button>
                             </div>
                         </div>
@@ -544,7 +582,7 @@ onBeforeUnmount(() => {
 
                     <!-- アカウントセクション -->
                     <section class="settings-section">
-                        <h3 class="settings-section-title">アカウント</h3>
+                        <h3 class="settings-section-title">{{ t("settings.account.title") }}</h3>
                         <button
                             class="settings-logout-button"
                             @click="handleLogout"
@@ -559,19 +597,19 @@ onBeforeUnmount(() => {
                                     d="M3 3h8v2H5v10h6v2H3V3zm10 4l4 3-4 3v-2H8V9h5V7z"
                                 />
                             </svg>
-                            <span>ログアウト</span>
+                            <span>{{ t("settings.account.logout") }}</span>
                         </button>
                     </section>
 
                     <!-- アプリケーション情報セクション -->
                     <section class="settings-section">
                         <h3 class="settings-section-title">
-                            アプリケーション情報
+                            {{ t("settings.appInfo.title") }}
                         </h3>
                         <div class="settings-info-group">
                             <div class="settings-info-item">
                                 <span class="settings-info-label"
-                                    >バージョン</span
+                                    >{{ t("settings.appInfo.version") }}</span
                                 >
                                 <span class="settings-info-value">{{
                                     appVersion
@@ -579,7 +617,7 @@ onBeforeUnmount(() => {
                             </div>
                             <div class="settings-info-item">
                                 <span class="settings-info-label"
-                                    >CLI パス</span
+                                    >{{ t("settings.appInfo.cliPath") }}</span
                                 >
                                 <span
                                     class="settings-info-value settings-info-value--path"
@@ -1027,5 +1065,39 @@ onBeforeUnmount(() => {
 
 .settings-content::-webkit-scrollbar-thumb:hover {
     background: var(--color-text-muted);
+}
+
+/* 言語セレクター */
+.language-icon {
+    margin-right: 0.5rem;
+}
+
+.language-selector {
+    display: inline-flex;
+    background: var(--color-bg);
+    padding: 4px;
+    border-radius: 8px;
+    gap: 4px;
+}
+
+.lang-button {
+    padding: 8px 16px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.lang-button:hover {
+    color: var(--color-text);
+}
+
+.lang-button.active {
+    background: var(--color-primary);
+    color: white;
 }
 </style>

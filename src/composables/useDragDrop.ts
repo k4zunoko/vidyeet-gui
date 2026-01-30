@@ -11,6 +11,7 @@
  */
 
 import { ref, type Ref } from "vue";
+import { useI18n } from "vue-i18n";
 import type { ToastType } from "../types/app";
 
 // 対応する動画ファイル形式
@@ -46,11 +47,12 @@ function isVideoFile(file: File): boolean {
  * @param options.showToast - トースト通知を表示するコールバック
  */
 export function useDragDrop(options: {
-  onFilesDropped: (files: { filePath: string; fileName: string }[]) => void;
-  showToast: (type: ToastType, message: string) => void;
-}): UseDragDrop {
-  const isDragging = ref(false);
-  let dragCounter = 0; // 子要素へのドラッグ判定用カウンター
+   onFilesDropped: (files: { filePath: string; fileName: string }[]) => void;
+   showToast: (type: ToastType, message: string) => void;
+ }): UseDragDrop {
+   const isDragging = ref(false);
+   const { t } = useI18n();
+   let dragCounter = 0; // 子要素へのドラッグ判定用カウンター
 
   /**
    * dragenter イベントハンドラ
@@ -116,22 +118,22 @@ export function useDragDrop(options: {
       }
     }
 
-    if (videoFiles.length === 0) {
-      options.showToast("error", "動画ファイルのみアップロードできます");
-      return;
-    }
+     if (videoFiles.length === 0) {
+       options.showToast("error", t("app.upload.error"));
+       return;
+     }
 
     // ファイルパスを取得してコールバックに渡す
     const fileItems: { filePath: string; fileName: string }[] = [];
     for (const file of videoFiles) {
       const filePath = (file as any).path || "";
-      if (!filePath) {
-        options.showToast(
-          "error",
-          `${file.name}: ファイルパスの取得に失敗しました`,
-        );
-        continue;
-      }
+       if (!filePath) {
+         options.showToast(
+           "error",
+           `${file.name}: ${t("uploadErrors.pathError")}`,
+         );
+         continue;
+       }
       fileItems.push({
         filePath,
         fileName: file.name,

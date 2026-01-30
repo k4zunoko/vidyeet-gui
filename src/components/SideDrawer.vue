@@ -6,20 +6,23 @@
  * - アップロードボタン（上部）
  * - ログアウトボタン（下部）
  */
+import { useI18n } from 'vue-i18n';
 
 defineProps<{
-  /** ドロワーの開閉状態 */
-  isOpen: boolean;
-}>();
+   /** ドロワーの開閉状態 */
+   isOpen: boolean;
+ }>();
 
 const emit = defineEmits<{
-  /** 閉じる要求 */
-  close: [];
-  /** アップロード要求 */
-  upload: [];
-  /** ログアウト要求 */
-  logout: [];
-}>();
+   /** 閉じる要求 */
+   close: [];
+   /** アップロード要求 */
+   upload: [];
+   /** ログアウト要求 */
+   logout: [];
+ }>();
+
+const { t } = useI18n();
 
 function handleOverlayClick() {
   emit('close');
@@ -49,25 +52,25 @@ function handleLogout() {
     <Transition name="slide">
       <aside v-if="isOpen" class="drawer">
         <div class="drawer-content">
-          <!-- 上部: アップロード -->
-          <div class="drawer-top">
-            <button class="drawer-button upload" @click="handleUpload">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 2L5 7h3v6h4V7h3l-5-5zM3 16v2h14v-2H3z"/>
-              </svg>
-              <span>アップロード</span>
-            </button>
-          </div>
+           <!-- 上部: アップロード -->
+           <div class="drawer-top">
+             <button class="drawer-button upload" @click="handleUpload">
+               <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                 <path d="M10 2L5 7h3v6h4V7h3l-5-5zM3 16v2h14v-2H3z"/>
+               </svg>
+               <span>{{ t('sideDrawer.upload') }}</span>
+             </button>
+           </div>
 
-          <!-- 下部: ログアウト -->
-          <div class="drawer-bottom">
-            <button class="drawer-button logout" @click="handleLogout">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M3 3h8v2H5v10h6v2H3V3zm10 4l4 3-4 3v-2H8V9h5V7z"/>
-              </svg>
-              <span>ログアウト</span>
-            </button>
-          </div>
+           <!-- 下部: ログアウト -->
+           <div class="drawer-bottom">
+             <button class="drawer-button logout" @click="handleLogout">
+               <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                 <path d="M3 3h8v2H5v10h6v2H3V3zm10 4l4 3-4 3v-2H8V9h5V7z"/>
+               </svg>
+               <span>{{ t('sideDrawer.logout') }}</span>
+             </button>
+           </div>
         </div>
       </aside>
     </Transition>

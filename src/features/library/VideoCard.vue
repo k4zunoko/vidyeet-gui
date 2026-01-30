@@ -11,18 +11,21 @@
  * @see docs/UI_SPEC.md - 一覧画面（Library）
  */
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { VideoItem } from '../../types/app';
 import { getThumbnailUrl, getAnimatedGifUrl } from '../../utils/muxUrls';
 
 const props = defineProps<{
-  video: VideoItem;
-  isSelected: boolean;
-}>();
+   video: VideoItem;
+   isSelected: boolean;
+ }>();
 
 const emit = defineEmits<{
-  select: [video: VideoItem];
-  contextmenu: [event: MouseEvent, video: VideoItem];
-}>();
+   select: [video: VideoItem];
+   contextmenu: [event: MouseEvent, video: VideoItem];
+ }>();
+
+const { t } = useI18n();
 
 // ホバー状態
 const isHovering = ref(false);
@@ -87,17 +90,17 @@ function handleContextMenu(event: MouseEvent) {
 </script>
 
 <template>
-  <div
-    class="video-card"
-    :class="{
-      'is-selected': isSelected,
-      'is-disabled': !video.playbackId,
-      'is-hovering': isHovering
-    }"
-    role="button"
-    tabindex="0"
-    :aria-label="`動画 ${formattedDuration || ''}`"
-    :aria-pressed="isSelected"
+   <div
+     class="video-card"
+     :class="{
+       'is-selected': isSelected,
+       'is-disabled': !video.playbackId,
+       'is-hovering': isHovering
+     }"
+     role="button"
+     tabindex="0"
+     :aria-label="`${t('videoCard.ariaPrefix')} ${formattedDuration || ''}`"
+     :aria-pressed="isSelected"
     @click="handleClick"
     @keydown.enter="handleClick"
     @keydown.space.prevent="handleClick"
@@ -117,13 +120,13 @@ function handleContextMenu(event: MouseEvent) {
         loading="lazy"
         @error="handleImageError"
       />
-      <!-- プレースホルダ -->
-      <div v-else class="thumbnail-placeholder">
-        <svg class="placeholder-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9.5 12l2.5 3.01L14.5 12l4 5H5l4.5-5z"/>
-        </svg>
-        <span v-if="!video.playbackId" class="placeholder-text">再生不可</span>
-      </div>
+       <!-- プレースホルダ -->
+       <div v-else class="thumbnail-placeholder">
+         <svg class="placeholder-icon" viewBox="0 0 24 24" fill="currentColor">
+           <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9.5 12l2.5 3.01L14.5 12l4 5H5l4.5-5z"/>
+         </svg>
+         <span v-if="!video.playbackId" class="placeholder-text">{{ t('videoCard.unplayable') }}</span>
+       </div>
 
       <!-- 再生時間バッジ -->
       <div v-if="formattedDuration && !isSelected" class="duration-badge">
@@ -137,13 +140,13 @@ function handleContextMenu(event: MouseEvent) {
         </svg>
       </div>
 
-      <!-- 選択中オーバーレイ -->
-      <div v-if="isSelected" class="selected-overlay">
-        <svg class="playing-icon" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 3v9.28a4.39 4.39 0 00-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"/>
-        </svg>
-        <span class="playing-text">再生中</span>
-      </div>
+       <!-- 選択中オーバーレイ -->
+       <div v-if="isSelected" class="selected-overlay">
+         <svg class="playing-icon" viewBox="0 0 24 24" fill="currentColor">
+           <path d="M12 3v9.28a4.39 4.39 0 00-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"/>
+         </svg>
+         <span class="playing-text">{{ t('videoCard.playing') }}</span>
+       </div>
     </div>
   </div>
 </template>

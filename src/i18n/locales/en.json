@@ -1,0 +1,175 @@
+{
+  "app": {
+    "initializing": "Initializing...",
+    "initializationError": "Initialization failed. Please restart the application.",
+    "loading": "Loading",
+     "deleteDialog": {
+       "title": "Delete video?",
+       "message": "This action cannot be undone. It will be permanently deleted from Mux.",
+       "cancelButton": "Cancel",
+       "deleteButton": "Delete",
+       "deleting": "Deleting...",
+       "error": "Failed to delete video.",
+       "success": "Video deleted"
+     },
+    "upload": {
+      "failed": "Upload failed",
+      "error": "Upload error",
+      "inProgress": "Uploading",
+      "minimizing": "Minimize",
+      "closing": "Close",
+      "showDetails": "Click to see details",
+      "expand": "Click to expand",
+      "waiting": "Waiting",
+      "items": "items",
+      "cancel": "Cancel"
+    },
+    "toasts": {
+      "linkCopied": "Link copied"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "close": "Close",
+    "update": {
+      "title": "Update",
+      "subtitle": "Check for latest version",
+      "checking": "Checking",
+      "checkButton": "Check",
+      "status": {
+        "checking": "Checking",
+        "available": "Update available",
+        "latest": "You're up to date",
+        "downloading": "Downloading",
+        "ready": "Ready to install",
+        "error": "An error occurred",
+        "unchecked": "Not checked"
+      },
+      "description": {
+        "checking": "Checking for updates...",
+        "available": "A new version is available",
+        "latest": "You're using the latest version",
+        "downloading": "Downloading update...",
+        "ready": "Ready to install",
+        "error": "Error checking for updates",
+        "unchecked": "Not checked yet"
+      },
+      "progress": {
+        "label": "Progress",
+        "note": "This process may take a few minutes"
+      },
+      "downloadButton": "Download",
+      "restarting": "Restarting",
+      "installButton": "Install",
+      "retryButton": "Retry",
+      "autoUpdateError": "Error checking for updates"
+    },
+    "account": {
+      "title": "Account",
+      "logout": "Logout"
+    },
+    "appInfo": {
+      "title": "App Info",
+      "version": "Version",
+      "cliPath": "CLI Path",
+      "loading": "Loading",
+      "error": "Error"
+    },
+    "language": {
+      "label": "Language",
+      "ja": "日本語",
+      "en": "English"
+    }
+  },
+  "login": {
+    "appTitle": "Vidyeet",
+    "subtitle": "Login with your Mux account",
+    "tokenId": {
+      "label": "Token ID",
+      "placeholder": "Enter Token ID"
+    },
+    "tokenSecret": {
+      "label": "Token Secret",
+      "placeholder": "Enter Token Secret"
+    },
+    "error": "Authentication failed. Please check your Token ID / Token Secret and try again.",
+    "loggingIn": "Logging in",
+    "loginButton": "Login",
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "hint": {
+      "prefix": "You can get tokens from",
+      "link": "Mux Dashboard",
+      "suffix": ""
+    }
+  },
+  "library": {
+    "error": {
+      "loadFailed": "Failed to load video list. Please try again.",
+      "unexpected": "An unexpected error occurred."
+    },
+    "retry": "Retry",
+    "empty": {
+      "title": "No videos",
+      "hint": "Videos uploaded to Mux will appear here"
+    },
+    "uploadButton": "Upload video",
+    "uploadAria": "Upload video"
+  },
+  "player": {
+    "selectVideo": "Please select a video",
+    "selectHint": "Click a video from the list on the left",
+    "loading": "Loading...",
+    "retry": "Retry"
+  },
+  "videoCard": {
+    "ariaPrefix": "Video:",
+    "unplayable": "Unplayable",
+    "playing": "Playing"
+  },
+   "contextMenu": {
+     "ariaLabel": "Video menu",
+     "copyLink": "Copy link",
+     "delete": "Delete"
+   },
+  "infoPanel": {
+    "duration": "Duration",
+    "resolution": "Resolution",
+    "aspectRatio": "Aspect ratio",
+    "frameRate": "Frame rate",
+    "createdAt": "Created at",
+    "status": "Status"
+  },
+   "dragDrop": {
+     "message": "Drop files here to upload",
+     "hint": "Video files only"
+   },
+   "titleBar": {
+     "reload": "Reload",
+     "settings": "Settings",
+     "restore": "Restore",
+     "maximize": "Maximize",
+     "close": "Close"
+   },
+   "sideDrawer": {
+     "upload": "Upload",
+     "logout": "Logout"
+   },
+   "toast": {
+     "close": "Close"
+   },
+  "uploadPhase": {
+    "validating": "Validating",
+    "validationComplete": "Validation complete",
+    "preparing": "Preparing",
+    "prepareComplete": "Preparation complete",
+    "uploading": "Uploading",
+    "processing": "Processing",
+    "completed": "Completed",
+    "done": "Done",
+    "starting": "Starting"
+  },
+  "uploadErrors": {
+    "pathError": "Invalid file path",
+    "uploadFailed": "Upload failed"
+  }
+}
