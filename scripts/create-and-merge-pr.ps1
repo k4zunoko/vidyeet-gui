@@ -54,7 +54,10 @@ gh pr checks $prNumber --watch
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "CI checks failed or timed out. Aborting merge." -ForegroundColor Red
-    Write-Host "Please review the PR: https://github.com/$(git config --get remote.origin.url | sed 's/.*:\|\.git$//g')/pull/$prNumber" -ForegroundColor Yellow
+    # Extract GitHub repo path from remote URL
+    $repoUrl = git config --get remote.origin.url
+    $repoPath = $repoUrl -replace '^.*[:/]', '' -replace '\.git$', ''
+    Write-Host "Please review the PR: https://github.com/$repoPath/pull/$prNumber" -ForegroundColor Yellow
     exit 1
 }
 
