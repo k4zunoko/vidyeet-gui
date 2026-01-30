@@ -16,7 +16,7 @@ if ([string]::IsNullOrWhiteSpace($BranchName)) {
 }
 
 # Validate branch name (no spaces, special chars except - and _)
-if ($BranchName -notmatch '^[a-zA-Z0-9_\-]+$') {
+if ($BranchName -notmatch '^[a-zA-Z0-9_\-/]+$') {
     Write-Host "Error: Branch name contains invalid characters. Use only alphanumeric, hyphens, and underscores." -ForegroundColor Red
     exit 1
 }
