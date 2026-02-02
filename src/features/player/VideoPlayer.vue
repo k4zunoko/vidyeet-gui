@@ -28,9 +28,40 @@ const videoRef = ref<HTMLVideoElement | null>(null);
 // HLSインスタンス
 let hls: Hls | null = null;
 
+// 現在再生中のplaybackId（変更検出・競合状態防止用）
+let currentPlaybackId: string | null = null;
+
 // 再生状態
 const playerState = ref<'idle' | 'loading' | 'ready' | 'playing' | 'error'>('idle');
 const errorMessage = ref<string | null>(null);
+
+/**
+ * HLSイベントハンドラを設定（初回のみ）
+ */
+function setupHlsEventHandlers(hlsInstance: Hls) {
+  hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+    playerState.value = 'ready';
+    videoRef.value?.play().catch(() => {
+      // 自動再生がブロックされた場合は無視
+    });
+  });
+
+  hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
+    if (data.fatal) {
+      playerState.value = 'error';
+      switch (data.type) {
+        case Hls.ErrorTypes.NETWORK_ERROR:
+          errorMessage.value = 'ネットワークエラーが発生しました。接続を確認してください。';
+          break;
+        case Hls.ErrorTypes.MEDIA_ERROR:
+          errorMessage.value = 'メディアエラーが発生しました。別の動画を試してください。';
+          break;
+        default:
+          errorMessage.value = '再生エラーが発生しました。';
+      }
+    }
+  });
+}
 
 /**
  * HLSを初期化して再生開始
@@ -38,46 +69,37 @@ const errorMessage = ref<string | null>(null);
 function initPlayer(playbackId: string) {
   if (!videoRef.value) return;
 
-  // 既存のインスタンスを破棄
-  destroyPlayer();
-
   const hlsUrl = getHlsUrl(playbackId);
   playerState.value = 'loading';
   errorMessage.value = null;
 
   // HLS.js がサポートされている場合
   if (Hls.isSupported()) {
-    hls = new Hls({
-      // プロキシ環境での安定性向上
-      enableWorker: true,
-      lowLatencyMode: false,
-    });
-
-    hls.loadSource(hlsUrl);
-    hls.attachMedia(videoRef.value);
-
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      playerState.value = 'ready';
-      videoRef.value?.play().catch(() => {
-        // 自動再生がブロックされた場合は無視
+    if (hls) {
+      // 既存インスタンスを再利用してソース切り替え
+      console.log('[VideoPlayer] Reusing HLS instance');
+      hls.loadSource(hlsUrl);
+      // attachMediaは既に済んでいるが、念のため呼び出し
+      hls.attachMedia(videoRef.value);
+    } else {
+      // 新規HLSインスタンス作成
+      console.log('[VideoPlayer] Creating new HLS instance');
+      hls = new Hls({
+        // プロキシ環境での安定性向上
+        enableWorker: true,
+        lowLatencyMode: false,
+        // プレイヤーサイズに応じた画質自動制限（初期読み込み軽減）
+        capLevelToPlayerSize: true,
+        // 最大バッファ長（秒）：デフォルト30秒を維持
+        maxBufferLength: 30,
+        // 起動時の画質レベル：-1は自動選択（ABR）
+        startLevel: -1,
       });
-    });
 
-    hls.on(Hls.Events.ERROR, (_event, data) => {
-      if (data.fatal) {
-        playerState.value = 'error';
-        switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
-            errorMessage.value = 'ネットワークエラーが発生しました。接続を確認してください。';
-            break;
-          case Hls.ErrorTypes.MEDIA_ERROR:
-            errorMessage.value = 'メディアエラーが発生しました。別の動画を試してください。';
-            break;
-          default:
-            errorMessage.value = '再生エラーが発生しました。';
-        }
-      }
-    });
+      setupHlsEventHandlers(hls);
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(videoRef.value);
+    }
   }
   // ネイティブHLSサポート（Safari）
   else if (videoRef.value.canPlayType('application/vnd.apple.mpegurl')) {
@@ -99,19 +121,26 @@ function initPlayer(playbackId: string) {
 }
 
 /**
- * プレイヤーを破棄
+ * プレイヤーを停止・リセット（インスタンスは保持）
  */
 function destroyPlayer() {
-  if (hls) {
-    hls.destroy();
-    hls = null;
-  }
   if (videoRef.value) {
     videoRef.value.pause();
     videoRef.value.src = '';
   }
   playerState.value = 'idle';
   errorMessage.value = null;
+  currentPlaybackId = null;
+}
+
+/**
+ * HLSインスタンスを完全破棄（onUnmounted時のみ使用）
+ */
+function destroyHlsInstance() {
+  if (hls) {
+    hls.destroy();
+    hls = null;
+  }
 }
 
 /**
@@ -127,11 +156,23 @@ function handleRetry() {
 watch(
   () => props.video,
   async (newVideo) => {
-    if (newVideo?.playbackId) {
+    const targetId = newVideo?.playbackId ?? null;
+
+    // 同じ動画が選択された場合は再初期化をスキップ
+    if (targetId === currentPlaybackId) {
+      console.log('[VideoPlayer] Same video selected, skipping initialization');
+      return;
+    }
+
+    // 新しいplaybackIdを記録（競合状態防止のため早期に設定）
+    currentPlaybackId = targetId;
+
+    if (targetId) {
       // v-if による DOM 更新を待ってから初期化
       await nextTick();
-      if (videoRef.value) {
-        initPlayer(newVideo.playbackId);
+      // nextTick後もplaybackIdが変わっていないか確認（競合防止）
+      if (currentPlaybackId === targetId && videoRef.value) {
+        initPlayer(targetId);
       }
     } else {
       destroyPlayer();
@@ -166,6 +207,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   destroyPlayer();
+  destroyHlsInstance();
 });
 </script>
 
@@ -214,6 +256,7 @@ onUnmounted(() => {
         class="video-element"
         controls
         playsinline
+        preload="metadata"
         @play="handlePlay"
         @pause="handlePause"
         @contextmenu="handleContextMenu"
