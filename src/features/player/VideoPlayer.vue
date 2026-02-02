@@ -28,6 +28,9 @@ const videoRef = ref<HTMLVideoElement | null>(null);
 // HLSインスタンス
 let hls: Hls | null = null;
 
+// 現在再生中のplaybackId（変更検出・競合状態防止用）
+let currentPlaybackId: string | null = null;
+
 // 再生状態
 const playerState = ref<'idle' | 'loading' | 'ready' | 'playing' | 'error'>('idle');
 const errorMessage = ref<string | null>(null);
@@ -112,6 +115,7 @@ function destroyPlayer() {
   }
   playerState.value = 'idle';
   errorMessage.value = null;
+  currentPlaybackId = null;
 }
 
 /**
@@ -127,11 +131,23 @@ function handleRetry() {
 watch(
   () => props.video,
   async (newVideo) => {
-    if (newVideo?.playbackId) {
+    const targetId = newVideo?.playbackId ?? null;
+
+    // 同じ動画が選択された場合は再初期化をスキップ
+    if (targetId === currentPlaybackId) {
+      console.log('[VideoPlayer] Same video selected, skipping initialization');
+      return;
+    }
+
+    // 新しいplaybackIdを記録（競合状態防止のため早期に設定）
+    currentPlaybackId = targetId;
+
+    if (targetId) {
       // v-if による DOM 更新を待ってから初期化
       await nextTick();
-      if (videoRef.value) {
-        initPlayer(newVideo.playbackId);
+      // nextTick後もplaybackIdが変わっていないか確認（競合防止）
+      if (currentPlaybackId === targetId && videoRef.value) {
+        initPlayer(targetId);
       }
     } else {
       destroyPlayer();
