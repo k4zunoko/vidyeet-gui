@@ -36,6 +36,8 @@ tmp-*.txt
 
 .sisyphus
 
+nul
+
 bin/*.md
 build/*.md
 build/*.nsh
