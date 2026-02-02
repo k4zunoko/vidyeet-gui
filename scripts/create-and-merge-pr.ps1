@@ -48,15 +48,37 @@ if (-not $prNumber) {
 
 Write-Host "PR Number: $prNumber" -ForegroundColor Green
 
-# Wait for CI to complete using gh pr checks --watch
-Write-Host "Waiting for CI checks to complete..." -ForegroundColor Cyan
+# Wait for CI checks to be registered (with polling)
+Write-Host "Waiting for CI checks to be registered..." -ForegroundColor Cyan
+$maxWaitSeconds = 60
+$waitedSeconds = 0
+$checksRegistered = $false
+
+while ($waitedSeconds -lt $maxWaitSeconds) {
+    $checkOutput = gh pr checks $prNumber 2>&1
+    if ($LASTEXITCODE -eq 0 -or $checkOutput -notmatch "no checks reported") {
+        $checksRegistered = $true
+        break
+    }
+    Write-Host "." -NoNewline -ForegroundColor DarkGray
+    Start-Sleep -Seconds 2
+    $waitedSeconds += 2
+}
+
+if (-not $checksRegistered) {
+    Write-Host "`nWarning: CI checks not registered after ${maxWaitSeconds}s. Proceeding anyway..." -ForegroundColor Yellow
+}
+
+# Now wait for CI to complete using --watch
+Write-Host "`nWaiting for CI checks to complete..." -ForegroundColor Cyan
 gh pr checks $prNumber --watch
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "CI checks failed or timed out. Aborting merge." -ForegroundColor Red
-    # Extract GitHub repo path from remote URL
+    # Extract GitHub repo path from remote URL (handles both https:// and git@ formats)
     $repoUrl = git config --get remote.origin.url
-    $repoPath = $repoUrl -replace '^.*[:/]', '' -replace '\.git$', ''
+    # Match github.com followed by : or /, then capture user/repo path
+    $repoPath = $repoUrl -replace '^.*github\.com[/:]', '' -replace '\.git$', ''
     Write-Host "Please review the PR: https://github.com/$repoPath/pull/$prNumber" -ForegroundColor Yellow
     exit 1
 }
