@@ -88,6 +88,12 @@ function initPlayer(playbackId: string) {
         // プロキシ環境での安定性向上
         enableWorker: true,
         lowLatencyMode: false,
+        // プレイヤーサイズに応じた画質自動制限（初期読み込み軽減）
+        capLevelToPlayerSize: true,
+        // 最大バッファ長（秒）：デフォルト30秒を維持
+        maxBufferLength: 30,
+        // 起動時の画質レベル：-1は自動選択（ABR）
+        startLevel: -1,
       });
 
       setupHlsEventHandlers(hls);
@@ -250,6 +256,7 @@ onUnmounted(() => {
         class="video-element"
         controls
         playsinline
+        preload="metadata"
         @play="handlePlay"
         @pause="handlePause"
         @contextmenu="handleContextMenu"
