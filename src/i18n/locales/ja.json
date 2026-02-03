@@ -146,7 +146,7 @@
     "deleteConfirm": "削除しますか？",
     "empty": "テンプレートがありません",
     "namePlaceholder": "テンプレート名を入力",
-    "contentPlaceholder": "例: https://stream.mux.com/\\${PLAYBACK_ID}.gif",
+    "contentPlaceholder": "例: https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
     "variablesHelp": "利用可能な変数",
     "errors": {
       "emptyName": "テンプレート名を入力してください",

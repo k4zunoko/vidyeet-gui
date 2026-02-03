@@ -146,7 +146,7 @@
     "deleteConfirm": "Delete this template?",
     "empty": "No templates",
     "namePlaceholder": "Enter template name",
-    "contentPlaceholder": "e.g., https://stream.mux.com/\\${PLAYBACK_ID}.gif",
+    "contentPlaceholder": "e.g., https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
     "variablesHelp": "Available Variables",
     "errors": {
       "emptyName": "Please enter a template name",
