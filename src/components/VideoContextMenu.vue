@@ -312,7 +312,8 @@ onUnmounted(() => {
 }
 
 .context-menu-section {
-  padding: 4px 0;
+  /* No padding to ensure consistent spacing with dividers */
+  padding: 0;
 }
 
 .context-menu-section-title {
@@ -324,7 +325,11 @@ onUnmounted(() => {
   letter-spacing: 0.05em;
 }
 
-.context-menu-item--template {
-  padding-left: 32px;
-}
+/* 
+ * Template items use standard padding for consistent alignment.
+ * Visual hierarchy is achieved through:
+ * - Section title (typography: smaller, muted, uppercase, bold)
+ * - Dividers between sections
+ * Following Material Design, Fluent Design & NN/g guidelines for menu alignment.
+ */
 </style>
