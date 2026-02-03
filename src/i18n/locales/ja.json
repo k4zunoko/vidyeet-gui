@@ -126,11 +126,43 @@
      "unplayable": "再生不可",
      "playing": "再生中"
    },
-   "contextMenu": {
-     "ariaLabel": "動画メニュー",
-     "copyLink": "リンクをコピー",
-     "delete": "削除"
-   },
+    "contextMenu": {
+      "ariaLabel": "動画メニュー",
+      "copyLink": "リンクをコピー",
+      "copyTemplates": "テンプレートでコピー",
+      "delete": "削除"
+    },
+    "copyTemplate": {
+      "title": "コピーテンプレート",
+      "nameLabel": "テンプレート名",
+      "contentLabel": "テンプレート内容",
+      "addTitle": "新規テンプレート",
+      "addButton": "追加",
+      "adding": "追加中...",
+      "editButton": "編集",
+      "deleteButton": "削除",
+      "cancelButton": "キャンセル",
+      "saveButton": "保存",
+      "deleteConfirm": "削除しますか？",
+      "empty": "テンプレートがありません",
+      "namePlaceholder": "テンプレート名を入力",
+      "contentPlaceholder": "例: https://stream.mux.com/${PLAYBACK_ID}.m3u8",
+      "variablesHelp": "利用可能な変数",
+      "errors": {
+        "emptyName": "テンプレート名を入力してください",
+        "emptyContent": "テンプレート内容を入力してください",
+        "invalidVariable": "不明な変数: {var}",
+        "duplicateName": "同じ名前のテンプレートが存在します"
+      },
+      "toast": {
+        "copySuccess": "{name} をクリップボードにコピーしました",
+        "copyError": "コピーに失敗しました: {reason}",
+        "saveSuccess": "テンプレートを保存しました",
+        "saveError": "テンプレートの保存に失敗しました",
+        "deleteSuccess": "テンプレートを削除しました",
+        "deleteError": "テンプレートの削除に失敗しました"
+      }
+    },
    "infoPanel": {
      "duration": "時間",
      "resolution": "解像度",

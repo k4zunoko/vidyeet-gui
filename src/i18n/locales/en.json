@@ -127,10 +127,42 @@
     "playing": "Playing"
   },
    "contextMenu": {
-     "ariaLabel": "Video menu",
-     "copyLink": "Copy link",
-     "delete": "Delete"
-   },
+      "ariaLabel": "Video menu",
+      "copyLink": "Copy link",
+      "copyTemplates": "Copy with Template",
+      "delete": "Delete"
+    },
+    "copyTemplate": {
+      "title": "Copy Templates",
+      "nameLabel": "Template Name",
+      "contentLabel": "Template Content",
+      "addTitle": "New Template",
+      "addButton": "Add",
+      "adding": "Adding...",
+      "editButton": "Edit",
+      "deleteButton": "Delete",
+      "cancelButton": "Cancel",
+      "saveButton": "Save",
+      "deleteConfirm": "Delete this template?",
+      "empty": "No templates",
+      "namePlaceholder": "Enter template name",
+      "contentPlaceholder": "e.g., https://stream.mux.com/${PLAYBACK_ID}.m3u8",
+      "variablesHelp": "Available Variables",
+      "errors": {
+        "emptyName": "Please enter a template name",
+        "emptyContent": "Please enter template content",
+        "invalidVariable": "Unknown variable: {var}",
+        "duplicateName": "A template with this name already exists"
+      },
+      "toast": {
+        "copySuccess": "{name} copied to clipboard",
+        "copyError": "Could not copy: {reason}",
+        "saveSuccess": "Template saved",
+        "saveError": "Failed to save template",
+        "deleteSuccess": "Template deleted",
+        "deleteError": "Failed to delete template"
+      }
+    },
   "infoPanel": {
     "duration": "Duration",
     "resolution": "Resolution",
