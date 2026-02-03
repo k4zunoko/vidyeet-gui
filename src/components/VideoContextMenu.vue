@@ -15,7 +15,10 @@
 import { ref, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { VideoItem } from '../types/app';
-import { getMp4Url } from '../utils/muxUrls';
+import { getMp4Url, getHlsUrl, getThumbnailUrl, getAnimatedGifUrl } from '../utils/muxUrls';
+import { useCopyTemplates } from '../composables/useCopyTemplates';
+import { useToast } from '../composables/useToast';
+import { isIpcError } from '../../electron/types/ipc';
 
 const props = defineProps<{
   /** メニューを表示するか */
@@ -38,6 +41,22 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const { templates, loadTemplates, applyTemplate } = useCopyTemplates();
+const { showToast } = useToast();
+
+/**
+ * 秒数を HH:MM:SS 形式にフォーマット
+ */
+function formatDuration(seconds: number): string {
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (hrs > 0) {
+    return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
 // コンテキストメニューの参照
 const menuRef = ref<HTMLElement | null>(null);
@@ -50,9 +69,63 @@ async function handleCopyLink() {
 
   const mp4Url = getMp4Url(props.video.playbackId);
   await window.clipboard.writeText(mp4Url);
+  showToast('success', t('app.toasts.linkCopied'));
   emit('copySuccess');
   emit('close');
 }
+
+/**
+ * テンプレートを使用してコピー
+ */
+async function handleTemplateCopy(templateId: string, templateName: string) {
+  if (!props.video) return;
+
+  try {
+    // 変数を構築
+    const video = props.video;
+    const playbackId = video.playbackId;
+    
+    const variables: Record<string, string | number | null> = {
+      ASSET_ID: video.assetId,
+      PLAYBACK_ID: playbackId,
+      DURATION: video.duration ?? null,
+      DURATION_FORMATTED: video.duration ? formatDuration(video.duration) : null,
+      STATUS: video.status ?? null,
+      RESOLUTION: video.resolutionTier ?? null,
+      ASPECT_RATIO: video.aspectRatio ?? null,
+      FRAME_RATE: video.maxFrameRate ?? null,
+      CREATED_AT: video.createdAt ?? null,
+      HLS_URL: playbackId ? getHlsUrl(playbackId) : null,
+      MP4_URL: playbackId ? getMp4Url(playbackId) : null,
+      THUMBNAIL_URL: playbackId ? getThumbnailUrl(playbackId) : null,
+      GIF_URL: playbackId ? getAnimatedGifUrl(playbackId) : null,
+    };
+
+    const result = await applyTemplate(templateId, variables);
+    
+    if (isIpcError(result)) {
+      throw new Error(result.message);
+    }
+
+    await window.clipboard.writeText(result);
+    showToast('success', t('copyTemplate.toast.copySuccess', { name: templateName }));
+    emit('copySuccess');
+    emit('close');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    showToast('error', t('copyTemplate.toast.copyError', { reason: message }));
+    emit('close');
+  }
+}
+
+/**
+ * テンプレート一覧を読み込み
+ */
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen) {
+    loadTemplates();
+  }
+});
 
 /**
  * 動画を削除
@@ -115,6 +188,25 @@ onUnmounted(() => {
         role="menu"
         :aria-label="t('contextMenu.ariaLabel')"
       >
+        <!-- テンプレートコピー -->
+        <div v-if="templates.length > 0" class="context-menu-section">
+          <div class="context-menu-section-title">{{ t('contextMenu.copyTemplates') }}</div>
+          <button
+            v-for="template in templates"
+            :key="template.id"
+            class="context-menu-item context-menu-item--template"
+            role="menuitem"
+            @click="handleTemplateCopy(template.id, template.name)"
+          >
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+            </svg>
+            <span>{{ template.name }}</span>
+          </button>
+        </div>
+        <div v-if="templates.length > 0" class="context-menu-divider"></div>
+
+        <!-- 通常のコピー -->
         <button
           class="context-menu-item"
           role="menuitem"
@@ -217,5 +309,22 @@ onUnmounted(() => {
   height: 1px;
   margin: 4px 8px;
   background: var(--color-border);
+}
+
+.context-menu-section {
+  padding: 4px 0;
+}
+
+.context-menu-section-title {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.context-menu-item--template {
+  padding-left: 32px;
 }
 </style>
