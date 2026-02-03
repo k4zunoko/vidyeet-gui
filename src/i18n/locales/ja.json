@@ -4,14 +4,14 @@
     "initializationError": "初期化に失敗しました。アプリを再起動してください。",
     "loading": "読み込み中",
     "deleteDialog": {
-       "title": "動画を削除しますか？",
-       "message": "この操作は取り消せません。Muxから完全に削除されます。",
-       "cancelButton": "キャンセル",
-       "deleteButton": "削除する",
-       "deleting": "削除中...",
-       "error": "動画の削除に失敗しました。",
-       "success": "動画を削除しました"
-     },
+      "title": "動画を削除しますか？",
+      "message": "この操作は取り消せません。Muxから完全に削除されます。",
+      "cancelButton": "キャンセル",
+      "deleteButton": "削除する",
+      "deleting": "削除中...",
+      "error": "動画の削除に失敗しました。",
+      "success": "動画を削除しました"
+    },
     "upload": {
       "failed": "アップロード失敗",
       "error": "アップロードエラー",
@@ -121,42 +121,74 @@
     "loading": "読み込み中...",
     "retry": "再試行"
   },
-   "videoCard": {
-     "ariaPrefix": "動画",
-     "unplayable": "再生不可",
-     "playing": "再生中"
-   },
-   "contextMenu": {
-     "ariaLabel": "動画メニュー",
-     "copyLink": "リンクをコピー",
-     "delete": "削除"
-   },
-   "infoPanel": {
-     "duration": "時間",
-     "resolution": "解像度",
-     "aspectRatio": "アスペクト比",
-     "frameRate": "フレームレート",
-     "createdAt": "作成日",
-     "status": "ステータス"
-   },
-   "dragDrop": {
-     "message": "ここにファイルをドロップしてアップロード",
-     "hint": "動画ファイルのみ対応しています"
-   },
-   "titleBar": {
-     "reload": "リロード",
-     "settings": "設定",
-     "restore": "元に戻す",
-     "maximize": "最大化",
-     "close": "閉じる"
-   },
-   "sideDrawer": {
-     "upload": "アップロード",
-     "logout": "ログアウト"
-   },
-   "toast": {
-     "close": "閉じる"
-   },
+  "videoCard": {
+    "ariaPrefix": "動画",
+    "unplayable": "再生不可",
+    "playing": "再生中"
+  },
+  "contextMenu": {
+    "ariaLabel": "動画メニュー",
+    "copyLink": "リンクをコピー",
+    "copyTemplates": "テンプレートでコピー",
+    "delete": "削除"
+  },
+  "copyTemplate": {
+    "title": "コピーテンプレート",
+    "nameLabel": "テンプレート名",
+    "contentLabel": "テンプレート内容",
+    "addTitle": "新規テンプレート",
+    "addButton": "追加",
+    "adding": "追加中...",
+    "editButton": "編集",
+    "deleteButton": "削除",
+    "cancelButton": "キャンセル",
+    "saveButton": "保存",
+    "deleteConfirm": "削除しますか？",
+    "empty": "テンプレートがありません",
+    "namePlaceholder": "テンプレート名を入力",
+    "contentPlaceholder": "例: https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
+    "variablesHelp": "利用可能な変数",
+    "errors": {
+      "emptyName": "テンプレート名を入力してください",
+      "emptyContent": "テンプレート内容を入力してください",
+      "invalidVariable": "不明な変数: {var}",
+      "duplicateName": "同じ名前のテンプレートが存在します"
+    },
+    "toast": {
+      "copySuccess": "{name} をクリップボードにコピーしました",
+      "copyError": "コピーに失敗しました: {reason}",
+      "saveSuccess": "テンプレートを保存しました",
+      "saveError": "テンプレートの保存に失敗しました",
+      "deleteSuccess": "テンプレートを削除しました",
+      "deleteError": "テンプレートの削除に失敗しました"
+    }
+  },
+  "infoPanel": {
+    "duration": "時間",
+    "resolution": "解像度",
+    "aspectRatio": "アスペクト比",
+    "frameRate": "フレームレート",
+    "createdAt": "作成日",
+    "status": "ステータス"
+  },
+  "dragDrop": {
+    "message": "ここにファイルをドロップしてアップロード",
+    "hint": "動画ファイルのみ対応しています"
+  },
+  "titleBar": {
+    "reload": "リロード",
+    "settings": "設定",
+    "restore": "元に戻す",
+    "maximize": "最大化",
+    "close": "閉じる"
+  },
+  "sideDrawer": {
+    "upload": "アップロード",
+    "logout": "ログアウト"
+  },
+  "toast": {
+    "close": "閉じる"
+  },
   "uploadPhase": {
     "validating": "検証中",
     "validationComplete": "検証完了",

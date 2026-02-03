@@ -20,7 +20,9 @@ export type IpcErrorCode =
   | "AUTO_UPDATE_CONFIG_MISSING"
   | "AUTO_UPDATE_RELEASE_NOT_FOUND"
   | "AUTO_UPDATE_ERROR"
-  | "UNKNOWN_ERROR";
+  | "UNKNOWN_ERROR"
+  | "TEMPLATE_NOT_FOUND"
+  | "TEMPLATE_ERROR";
 
 /** IPC統一エラー応答 */
 export interface IpcError {
@@ -175,6 +177,62 @@ export interface UpdateActionResponse {
 }
 
 // =============================================================================
+// Template Types
+// =============================================================================
+
+/** Copy template item */
+export interface CopyTemplate {
+  id: string;
+  name: string;
+  content: string;
+  isPreset?: boolean;
+}
+
+/** templates:list request (void) */
+export type GetTemplatesRequest = void;
+
+/** templates:list response */
+export type GetTemplatesResponse = CopyTemplate[];
+
+/** templates:get request */
+export interface GetTemplateRequest {
+  id: string;
+}
+
+/** templates:save request */
+export interface SaveTemplateRequest {
+  id?: string;
+  name: string;
+  content: string;
+}
+
+/** templates:save response */
+export interface SaveTemplateResponse {
+  template: CopyTemplate;
+}
+
+/** templates:delete request */
+export interface DeleteTemplateRequest {
+  id: string;
+}
+
+/** templates:delete response */
+export interface DeleteTemplateResponse {
+  success: boolean;
+}
+
+/** templates:apply request */
+export interface ApplyTemplateRequest {
+  templateId: string;
+  variables: Record<string, string | number | null | undefined>;
+}
+
+/** templates:apply response */
+export interface ApplyTemplateResponse {
+  result: string;
+}
+
+// =============================================================================
 // IPC Channels
 // =============================================================================
 
@@ -192,6 +250,11 @@ export const IpcChannels = {
   UPDATE_DOWNLOAD: "update:download",
   UPDATE_INSTALL: "update:install",
   UPDATE_STATUS: "update:status",
+  TEMPLATES_LIST: "templates:list",
+  TEMPLATES_GET: "templates:get",
+  TEMPLATES_SAVE: "templates:save",
+  TEMPLATES_DELETE: "templates:delete",
+  TEMPLATES_APPLY: "templates:apply",
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
@@ -212,6 +275,11 @@ export interface VidyeetApi {
     request: UploadRequest,
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<UploadResponse | IpcError>;
+  getTemplates(): Promise<GetTemplatesResponse | IpcError>;
+  getTemplate(request: GetTemplateRequest): Promise<CopyTemplate | IpcError>;
+  saveTemplate(request: SaveTemplateRequest): Promise<SaveTemplateResponse | IpcError>;
+  deleteTemplate(request: DeleteTemplateRequest): Promise<DeleteTemplateResponse | IpcError>;
+  applyTemplate(request: ApplyTemplateRequest): Promise<ApplyTemplateResponse | IpcError>;
 }
 
 /** クリップボードAPI */

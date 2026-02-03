@@ -3,15 +3,15 @@
     "initializing": "Initializing...",
     "initializationError": "Initialization failed. Please restart the application.",
     "loading": "Loading",
-     "deleteDialog": {
-       "title": "Delete video?",
-       "message": "This action cannot be undone. It will be permanently deleted from Mux.",
-       "cancelButton": "Cancel",
-       "deleteButton": "Delete",
-       "deleting": "Deleting...",
-       "error": "Failed to delete video.",
-       "success": "Video deleted"
-     },
+    "deleteDialog": {
+      "title": "Delete video?",
+      "message": "This action cannot be undone. It will be permanently deleted from Mux.",
+      "cancelButton": "Cancel",
+      "deleteButton": "Delete",
+      "deleting": "Deleting...",
+      "error": "Failed to delete video.",
+      "success": "Video deleted"
+    },
     "upload": {
       "failed": "Upload failed",
       "error": "Upload error",
@@ -126,11 +126,43 @@
     "unplayable": "Unplayable",
     "playing": "Playing"
   },
-   "contextMenu": {
-     "ariaLabel": "Video menu",
-     "copyLink": "Copy link",
-     "delete": "Delete"
-   },
+  "contextMenu": {
+    "ariaLabel": "Video menu",
+    "copyLink": "Copy link",
+    "copyTemplates": "Copy with Template",
+    "delete": "Delete"
+  },
+  "copyTemplate": {
+    "title": "Copy Templates",
+    "nameLabel": "Template Name",
+    "contentLabel": "Template Content",
+    "addTitle": "New Template",
+    "addButton": "Add",
+    "adding": "Adding...",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "cancelButton": "Cancel",
+    "saveButton": "Save",
+    "deleteConfirm": "Delete this template?",
+    "empty": "No templates",
+    "namePlaceholder": "Enter template name",
+    "contentPlaceholder": "e.g., https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
+    "variablesHelp": "Available Variables",
+    "errors": {
+      "emptyName": "Please enter a template name",
+      "emptyContent": "Please enter template content",
+      "invalidVariable": "Unknown variable: {var}",
+      "duplicateName": "A template with this name already exists"
+    },
+    "toast": {
+      "copySuccess": "{name} copied to clipboard",
+      "copyError": "Could not copy: {reason}",
+      "saveSuccess": "Template saved",
+      "saveError": "Failed to save template",
+      "deleteSuccess": "Template deleted",
+      "deleteError": "Failed to delete template"
+    }
+  },
   "infoPanel": {
     "duration": "Duration",
     "resolution": "Resolution",
@@ -139,24 +171,24 @@
     "createdAt": "Created at",
     "status": "Status"
   },
-   "dragDrop": {
-     "message": "Drop files here to upload",
-     "hint": "Video files only"
-   },
-   "titleBar": {
-     "reload": "Reload",
-     "settings": "Settings",
-     "restore": "Restore",
-     "maximize": "Maximize",
-     "close": "Close"
-   },
-   "sideDrawer": {
-     "upload": "Upload",
-     "logout": "Logout"
-   },
-   "toast": {
-     "close": "Close"
-   },
+  "dragDrop": {
+    "message": "Drop files here to upload",
+    "hint": "Video files only"
+  },
+  "titleBar": {
+    "reload": "Reload",
+    "settings": "Settings",
+    "restore": "Restore",
+    "maximize": "Maximize",
+    "close": "Close"
+  },
+  "sideDrawer": {
+    "upload": "Upload",
+    "logout": "Logout"
+  },
+  "toast": {
+    "close": "Close"
+  },
   "uploadPhase": {
     "validating": "Validating",
     "validationComplete": "Validation complete",

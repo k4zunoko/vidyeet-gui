@@ -17,6 +17,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useI18n } from "vue-i18n";
 import { useLanguage } from "../composables/useLanguage";
+import CopyTemplateSettings from "./CopyTemplateSettings.vue";
 import {
     isIpcError,
     type UpdateProgress,
@@ -446,6 +447,12 @@ onBeforeUnmount(() => {
                                 </button>
                             </div>
                         </div>
+                    </section>
+
+                    <!-- コピーテンプレートセクション -->
+                    <section class="settings-section">
+                        <h3 class="settings-section-title">{{ t("copyTemplate.title") }}</h3>
+                        <CopyTemplateSettings />
                     </section>
 
                     <!-- アップデートセクション -->
