@@ -19,6 +19,10 @@ import {
   type UploadResponse,
   type UploadProgress,
   type IpcError,
+  type GetTemplateRequest,
+  type SaveTemplateRequest,
+  type DeleteTemplateRequest,
+  type ApplyTemplateRequest,
 } from './types/ipc'
 
 // =============================================================================
@@ -75,6 +79,26 @@ const vidyeetApi: VidyeetApi = {
         ipcRenderer.off('vidyeet:uploadProgress', progressListener)
       }
     }
+  },
+
+  async getTemplates() {
+    return await ipcRenderer.invoke(IpcChannels.TEMPLATES_LIST)
+  },
+
+  async getTemplate(request: GetTemplateRequest) {
+    return await ipcRenderer.invoke(IpcChannels.TEMPLATES_GET, request)
+  },
+
+  async saveTemplate(request: SaveTemplateRequest) {
+    return await ipcRenderer.invoke(IpcChannels.TEMPLATES_SAVE, request)
+  },
+
+  async deleteTemplate(request: DeleteTemplateRequest) {
+    return await ipcRenderer.invoke(IpcChannels.TEMPLATES_DELETE, request)
+  },
+
+  async applyTemplate(request: ApplyTemplateRequest) {
+    return await ipcRenderer.invoke(IpcChannels.TEMPLATES_APPLY, request)
   },
 }
 

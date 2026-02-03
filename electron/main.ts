@@ -17,6 +17,7 @@ import { registerVidyeetHandlers } from "./ipc/vidyeet";
 import { registerWindowHandlers } from "./ipc/window";
 import { registerClipboardHandlers } from "./ipc/clipboard";
 import { registerAppHandlers } from "./ipc/app";
+import { registerTemplateHandlers } from "./ipc/templates";
 import {
   registerUpdaterHandlers,
   setMainWindow,
@@ -283,6 +284,7 @@ app.whenReady().then(() => {
   registerClipboardHandlers();
   registerWindowHandlers(() => win);
   registerAppHandlers();
+  registerTemplateHandlers();
   registerUpdaterHandlers(
     clearBackgroundUpdateCheckTimer,
     runUpdateCheck,
