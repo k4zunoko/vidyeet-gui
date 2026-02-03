@@ -26,24 +26,33 @@ Write-Host "[OK] Working directory is clean" -ForegroundColor Green
 
 Write-Host "Creating pull request..." -ForegroundColor Cyan
 
-# Create the PR with auto-fill
-$prOutput = gh pr create --base main --head $currentBranch --fill
+# Check if PR already exists
+$existingPrOutput = gh pr list --head $currentBranch --base main --json number --jq '.[0].number' 2>&1
+$existingPrNumber = $existingPrOutput
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Failed to create pull request." -ForegroundColor Red
-    exit 1
-}
+if ($existingPrNumber -and $existingPrNumber -match '^\d+$') {
+    Write-Host "[OK] Pull request already exists: #$existingPrNumber" -ForegroundColor Green
+    $prNumber = $existingPrNumber
+} else {
+    # Create the PR with auto-fill
+    $prOutput = gh pr create --base main --head $currentBranch --fill
 
-Write-Host "[OK] Pull request created" -ForegroundColor Green
-Write-Host $prOutput
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Failed to create pull request." -ForegroundColor Red
+        exit 1
+    }
 
-# Extract PR number from output
-$prUrl = $prOutput
-$prNumber = [regex]::Match($prUrl, 'pull/(\d+)').Groups[1].Value
+    Write-Host "[OK] Pull request created" -ForegroundColor Green
+    Write-Host $prOutput
 
-if (-not $prNumber) {
-    Write-Host "Error: Could not extract PR number from response." -ForegroundColor Red
-    exit 1
+    # Extract PR number from output
+    $prUrl = $prOutput
+    $prNumber = [regex]::Match($prUrl, 'pull/(\d+)').Groups[1].Value
+
+    if (-not $prNumber) {
+        Write-Host "Error: Could not extract PR number from response." -ForegroundColor Red
+        exit 1
+    }
 }
 
 Write-Host "PR Number: $prNumber" -ForegroundColor Green
