@@ -25,17 +25,10 @@ describe('TemplateStore', () => {
     store = new TemplateStore();
   });
 
-  it('Test 1: Returns preset templates by default', () => {
+  it('Test 1: Returns empty templates by default', () => {
     const templates = store.getAll();
-    expect(templates).toHaveLength(4);
-    expect(templates).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'HLS Stream', isPreset: true }),
-        expect.objectContaining({ name: 'Thumbnail', isPreset: true }),
-        expect.objectContaining({ name: 'Animated GIF', isPreset: true }),
-        expect.objectContaining({ name: 'MP4 URL', isPreset: true }),
-      ])
-    );
+    expect(templates).toHaveLength(0);
+    expect(templates).toEqual([]);
   });
 
   it('Test 2: Creates new template with generated id', () => {
@@ -94,7 +87,7 @@ describe('TemplateStore', () => {
     expect(store.get(created.id)).toBeUndefined();
 
     // Verify total count decreased
-    const allBefore = 4 + 1; // 4 presets + 1 created
+    const allBefore = 0 + 1; // 0 presets + 1 created
     const allAfter = store.getAll().length;
     expect(allAfter).toBe(allBefore - 1);
   });
@@ -173,18 +166,19 @@ describe('TemplateStore', () => {
     expect(uniqueIds.size).toBe(3);
   });
 
-  it('Test 10: Presets cannot be modified', () => {
-    const presets = store.getAll().filter((t: any) => t.isPreset);
-    expect(presets.length).toBeGreaterThan(0);
-
-    const presetId = presets[0].id;
-
-    // Attempt to update a preset (should still work but we validate this is intentional)
-    const updated = store.update(presetId, {
+  it('Test 10: Templates can be created and updated', () => {
+    // Create a template
+    const created = store.create({
+      name: 'Original Template',
+      content: '${PLAYBACK_ID}',
+    });
+    
+    // Update the template
+    const updated = store.update(created.id, {
       name: 'Modified Preset',
     });
 
     expect(updated.name).toBe('Modified Preset');
-    expect(updated.isPreset).toBe(true);
+    expect(updated.id).toBe(created.id);
   });
 });

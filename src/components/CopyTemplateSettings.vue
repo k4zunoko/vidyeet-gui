@@ -37,11 +37,7 @@ const availableVariables = [
   '${RESOLUTION}',
   '${ASPECT_RATIO}',
   '${FRAME_RATE}',
-  '${CREATED_AT}',
-  '${HLS_URL}',
-  '${MP4_URL}',
-  '${THUMBNAIL_URL}',
-  '${GIF_URL}'
+  '${CREATED_AT}'
 ];
 
 // フォーム検証

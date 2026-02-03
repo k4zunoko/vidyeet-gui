@@ -17,12 +17,7 @@ interface UpdateTemplatePayload {
   content?: string;
 }
 
-const PRESET_TEMPLATES: CopyTemplate[] = [
-  { id: 'preset-hls', name: 'HLS Stream', content: '${HLS_URL}', isPreset: true },
-  { id: 'preset-thumb', name: 'Thumbnail', content: '${THUMBNAIL_URL}', isPreset: true },
-  { id: 'preset-gif', name: 'Animated GIF', content: '${GIF_URL}', isPreset: true },
-  { id: 'preset-mp4', name: 'MP4 URL', content: '${MP4_URL}', isPreset: true },
-];
+
 
 /**
  * Generates a unique ID using timestamp and random value
@@ -46,12 +41,12 @@ class TemplateStore {
   }
 
   /**
-   * Initialize store with preset templates if empty
+   * Initialize store with empty templates array if not exists
    */
   private initialize(): void {
     const existing = this.store.get(this.STORE_KEY);
     if (!existing) {
-      this.store.set(this.STORE_KEY, [...PRESET_TEMPLATES]);
+      this.store.set(this.STORE_KEY, []);
     }
   }
 
