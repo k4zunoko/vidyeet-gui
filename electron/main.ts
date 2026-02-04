@@ -18,6 +18,7 @@ import { registerWindowHandlers } from "./ipc/window";
 import { registerClipboardHandlers } from "./ipc/clipboard";
 import { registerAppHandlers } from "./ipc/app";
 import { registerTemplateHandlers } from "./ipc/templates";
+import { registerShellHandlers } from "./ipc/shell";
 import {
   registerUpdaterHandlers,
   setMainWindow,
@@ -282,6 +283,7 @@ app.whenReady().then(() => {
   // =============================================================================
   registerVidyeetHandlers();
   registerClipboardHandlers();
+  registerShellHandlers();
   registerWindowHandlers(() => win);
   registerAppHandlers();
   registerTemplateHandlers();

@@ -61,6 +61,13 @@ async function handleLogin() {
     isLoading.value = false;
   }
 }
+
+/**
+ * 外部リンクを開く
+ */
+async function handleOpenExternal(url: string) {
+  await window.shell.openExternal(url);
+}
 </script>
 
 <template>
@@ -113,7 +120,7 @@ async function handleLogin() {
 
        <p class="login-hint">
          {{ t('login.hint.prefix') }}
-         <a href="https://dashboard.mux.com/settings/access-tokens" target="_blank" rel="noopener">
+         <a href="#" @click.prevent="handleOpenExternal('https://dashboard.mux.com/settings/access-tokens')">
            {{ t('login.hint.link') }}
          </a>
          {{ t('login.hint.suffix') }}

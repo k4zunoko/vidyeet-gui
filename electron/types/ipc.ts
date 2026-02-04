@@ -246,6 +246,7 @@ export const IpcChannels = {
   SELECT_FILE: "vidyeet:selectFile",
   UPLOAD: "vidyeet:upload",
   CLIPBOARD_WRITE: "clipboard:write",
+  SHELL_OPEN_EXTERNAL: "shell:openExternal",
   UPDATE_CHECK: "update:check",
   UPDATE_DOWNLOAD: "update:download",
   UPDATE_INSTALL: "update:install",
@@ -316,4 +317,9 @@ export interface UpdaterApi {
   downloadUpdate(): Promise<UpdateActionResponse | IpcError>;
   quitAndInstall(): Promise<UpdateActionResponse | IpcError>;
   onStatus(onStatus: (payload: UpdateStatusPayload) => void): () => void;
+}
+
+/** シェルAPI */
+export interface ShellApi {
+  openExternal(url: string): Promise<void>;
 }

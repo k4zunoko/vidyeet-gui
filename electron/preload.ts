@@ -4,6 +4,7 @@ import {
   type VidyeetApi,
   type WindowApi,
   type ClipboardApi,
+  type ShellApi,
   type AppApi,
   type UpdaterApi,
   type UpdateStatusPayload,
@@ -118,6 +119,21 @@ const clipboardApi: ClipboardApi = {
 }
 
 contextBridge.exposeInMainWorld('clipboard', clipboardApi)
+
+// =============================================================================
+// Shell API
+// =============================================================================
+
+/**
+ * シェルAPI - window.shell として公開
+ */
+const shellApi: ShellApi = {
+  async openExternal(url: string): Promise<void> {
+    return await ipcRenderer.invoke(IpcChannels.SHELL_OPEN_EXTERNAL, url)
+  },
+}
+
+contextBridge.exposeInMainWorld('shell', shellApi)
 
 // =============================================================================
 // Window Control API
