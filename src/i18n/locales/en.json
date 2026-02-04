@@ -31,54 +31,131 @@
   "settings": {
     "title": "Settings",
     "close": "Close",
-    "update": {
-      "title": "Update",
-      "subtitle": "Check for latest version",
-      "checking": "Checking",
-      "checkButton": "Check",
-      "status": {
-        "checking": "Checking",
-        "available": "Update available",
-        "latest": "You're up to date",
-        "downloading": "Downloading",
-        "ready": "Ready to install",
-        "error": "An error occurred",
-        "unchecked": "Not checked"
-      },
-      "description": {
-        "checking": "Checking for updates...",
-        "available": "A new version is available",
-        "latest": "You're using the latest version",
-        "downloading": "Downloading update...",
-        "ready": "Ready to install",
-        "error": "Error checking for updates",
-        "unchecked": "Not checked yet"
-      },
-      "progress": {
-        "label": "Progress",
-        "note": "This process may take a few minutes"
-      },
-      "downloadButton": "Download",
-      "restarting": "Restarting",
-      "installButton": "Install",
-      "retryButton": "Retry",
-      "autoUpdateError": "Error checking for updates"
+    "aria": {
+      "close": "Close settings",
+      "updateProgress": "Update progress"
+    },
+    "categories": {
+      "account": "Account",
+      "security": "Security",
+      "notification": "Notifications",
+      "display": "Display",
+      "data": "Data",
+      "support": "Support",
+      "appinfo": "App Info"
     },
     "account": {
-      "title": "Account",
+      "section": {
+        "account": "Account Information",
+        "accountDesc": "Authentication status and logout"
+      },
+      "status": "Authentication Status",
+      "statusDesc": "Current authentication status",
+      "authenticated": "Authenticated",
+      "logoutLabel": "Logout",
+      "logoutDesc": "Log out from your account",
       "logout": "Logout"
     },
+    "security": {
+      "section": {
+        "security": "Security Settings",
+        "securityDesc": "Password and security options"
+      },
+      "empty": {
+        "title": "No settings available",
+        "description": "Security settings will be added in a future update"
+      }
+    },
+    "notification": {
+      "section": {
+        "notification": "Notification Settings",
+        "notificationDesc": "Configure notification preferences"
+      },
+      "empty": {
+        "title": "No settings available",
+        "description": "Notification settings will be added in a future update"
+      }
+    },
+    "display": {
+      "section": {
+        "language": "Language Settings",
+        "languageDesc": "Interface display language"
+      },
+      "language": {
+        "label": "Display Language",
+        "description": "Select app display language"
+      }
+    },
+    "data": {
+      "section": {
+        "templates": "Copy Templates",
+        "templatesDesc": "Manage custom URL templates"
+      }
+    },
+    "support": {
+      "section": {
+        "support": "Support",
+        "supportDesc": "Help and contact information"
+      },
+      "empty": {
+        "title": "No settings available",
+        "description": "Support settings will be added in a future update"
+      }
+    },
     "appInfo": {
-      "title": "App Info",
+      "section": {
+        "info": "App Information",
+        "infoDesc": "Version and technical details",
+        "update": "Update",
+        "updateDesc": "Check and install latest version"
+      },
       "version": "Version",
+      "versionDesc": "Current app version",
       "cliPath": "CLI Path",
+      "cliPathDesc": "Path to the CLI being used",
       "loading": "Loading",
       "error": "Error"
     },
     "language": {
       "label": "Language",
       "ja": "日本語",
-      "en": "English"
+      "jaDesc": "Display in Japanese",
+      "en": "English",
+      "enDesc": "Display in English"
+    },
+    "update": {
+      "checkButton": "Check",
+      "checkingButton": "Checking...",
+      "downloadButton": "Download",
+      "installButton": "Install",
+      "retryButton": "Retry",
+      "restarting": "Restarting...",
+      "lastChecked": "Last checked:",
+      "newVersion": "New version:",
+      "autoUpdateError": "Auto-update is disabled",
+      "errorNetwork": "A network error occurred",
+      "status": {
+        "checking": "Checking",
+        "available": "Available",
+        "latest": "Latest",
+        "downloading": "Downloading",
+        "ready": "Ready",
+        "error": "Error",
+        "unchecked": "Unchecked"
+      },
+      "description": {
+        "checking": "Checking for updates...",
+        "available": "A new version is available",
+        "latest": "You're using the latest version",
+        "downloading": "Downloading update...",
+        "ready": "Update is ready. Installing will restart the app.",
+        "error": "An error occurred while checking for updates",
+        "unchecked": "Click the Check button to look for updates"
+      },
+      "progress": {
+        "label": "Download Progress",
+        "note": "The app will restart"
+      }
     }
   },
   "login": {
