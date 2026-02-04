@@ -111,19 +111,4 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "Warning: Could not pull changes. Repository may have diverged." -ForegroundColor Yellow
 }
 
-Write-Host "Pruning stale remote branches..." -ForegroundColor Cyan
-git fetch --prune
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Warning: Could not prune remote branches." -ForegroundColor Yellow
-}
-
-# Clean up local branch
-Write-Host "Cleaning up local branch..." -ForegroundColor Cyan
-git branch -d $currentBranch
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Warning: Could not delete local branch '$currentBranch'. It may have unmerged commits." -ForegroundColor Yellow
-} else {
-    Write-Host "[OK] Local branch '$currentBranch' deleted" -ForegroundColor Green
-}
+Write-Host "Done!" -ForegroundColor Green
