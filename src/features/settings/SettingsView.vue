@@ -233,7 +233,7 @@ onBeforeUnmount(() => {
     transform: translate(-50%, -50%);
     width: 90%;
     max-width: 800px;
-    max-height: 80vh;
+    height: 80vh;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: 12px;
@@ -262,6 +262,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    min-height: 0;
     background: var(--color-bg);
 }
 
@@ -310,6 +311,7 @@ onBeforeUnmount(() => {
 /* コンテンツ */
 .settings-content {
     flex: 1;
+    min-height: 0;
     padding: 1.5rem;
     overflow-y: auto;
 }
