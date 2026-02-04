@@ -57,44 +57,13 @@ if ($existingPrNumber -and $existingPrNumber -match '^\d+$') {
 
 Write-Host "PR Number: $prNumber" -ForegroundColor Green
 
-# Wait for CI checks to be registered (initial delay)
-Write-Host "Waiting for CI checks to be registered..." -ForegroundColor Cyan
-$maxRetries = 30
-$retryCount = 0
-
-while ($retryCount -lt $maxRetries) {
-    # Suppress error output temporarily to avoid exception when checks not yet registered
-    $ErrorActionPreference = "SilentlyContinue"
-    $checkStatus = gh pr checks $prNumber --json name --jq 'length' 2>$null
-    $lastExitCode = $LASTEXITCODE
-    $ErrorActionPreference = "Stop"
-    
-    if ($lastExitCode -eq 0 -and $checkStatus -gt 0) {
-        Write-Host "OK" -ForegroundColor Green
-        break
-    }
-    $retryCount++
-    if ($retryCount -lt $maxRetries) {
-        Write-Host "." -NoNewline -ForegroundColor DarkGray
-        Start-Sleep -Seconds 2
-    }
-}
-
-if ($retryCount -eq $maxRetries) {
-    Write-Host "`nWarning: CI checks not registered after 60 seconds. Proceeding anyway..." -ForegroundColor Yellow
-}
-
-# Wait for CI checks to complete using --watch
+# Wait for CI checks to complete
+# --watch waits until all checks complete and returns exit code based on result
 Write-Host "Waiting for CI checks to complete..." -ForegroundColor Cyan
 gh pr checks $prNumber --watch
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "CI checks failed or timed out. Aborting merge." -ForegroundColor Red
-    # Extract GitHub repo path from remote URL (handles both https:// and git@ formats)
-    $repoUrl = git config --get remote.origin.url
-    # Match github.com followed by : or /, then capture user/repo path
-    $repoPath = $repoUrl -replace '^.*github\.com[/:]', '' -replace '\.git$', ''
-    Write-Host "Please review the PR: https://github.com/$repoPath/pull/$prNumber" -ForegroundColor Yellow
+    Write-Host "`nCI checks failed. Aborting merge." -ForegroundColor Red
     exit 1
 }
 
