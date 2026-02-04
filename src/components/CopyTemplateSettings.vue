@@ -259,11 +259,6 @@ onMounted(() => {
           />
         </div>
 
-        <div class="variables-help">
-          <span class="variables-label">{{ t('copyTemplate.variablesHelp') }}:</span>
-          <code class="variables-list">{{ availableVariables.join(', ') }}</code>
-        </div>
-
         <div v-if="formError" class="form-error">
           {{ formError }}
         </div>
@@ -275,6 +270,15 @@ onMounted(() => {
         >
           {{ isLoading ? t('copyTemplate.adding') : t('copyTemplate.addButton') }}
         </button>
+
+        <div class="variables-hint">
+          <span class="variables-hint-label">{{ t('copyTemplate.variablesHelp') }}:</span>
+          <ul class="variables-list">
+            <li v-for="variable in availableVariables" :key="variable" class="variable-item">
+              <code>{{ variable }}</code>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </div>
@@ -429,25 +433,42 @@ onMounted(() => {
   opacity: 0.6;
 }
 
-.variables-help {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.5rem;
-  background: var(--color-surface);
-  border-radius: 6px;
+.variables-hint {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: transparent;
+  border-left: 2px solid var(--color-border);
   font-size: 0.75rem;
 }
 
-.variables-label {
+.variables-hint-label {
+  display: block;
   font-weight: 500;
   color: var(--color-text-muted);
+  margin-bottom: 0.4rem;
 }
 
 .variables-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.variable-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.variable-item code {
+  padding: 0.2rem 0.4rem;
+  background: var(--color-surface);
+  border-radius: 4px;
   color: var(--color-text);
   font-family: 'Consolas', 'Monaco', monospace;
-  word-break: break-word;
+  font-size: 0.7rem;
 }
 
 .form-error {
