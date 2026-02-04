@@ -17,7 +17,7 @@ import { useDeleteDialog } from "./composables/useDeleteDialog";
 import { useDragDrop } from "./composables/useDragDrop";
 import { useUploadDialog } from "./composables/useUploadDialog";
 import TitleBar from "./components/TitleBar.vue";
-import SettingsModal from "./components/SettingsModal.vue";
+import SettingsView from "./features/settings/SettingsView.vue";
 import VideoInfoPanel from "./components/VideoInfoPanel.vue";
 import VideoContextMenu from "./components/VideoContextMenu.vue";
 import ToastNotification from "./components/ToastNotification.vue";
@@ -302,7 +302,7 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- 設定モーダル -->
-            <SettingsModal
+            <SettingsView
                 :is-open="isSettingsOpen"
                 @close="closeSettings"
                 @logout="handleLogout"

@@ -32,11 +32,109 @@ export interface MessageSchema {
   settings: {
     title: string;
     close: string;
+    aria: {
+      close: string;
+      updateProgress: string;
+    };
+    categories: {
+      account: string;
+      security: string;
+      notification: string;
+      display: string;
+      data: string;
+      support: string;
+      appinfo: string;
+    };
+    account: {
+      section: {
+        account: string;
+        accountDesc: string;
+      };
+      status: string;
+      statusDesc: string;
+      authenticated: string;
+      logoutLabel: string;
+      logoutDesc: string;
+      logout: string;
+    };
+    security: {
+      section: {
+        security: string;
+        securityDesc: string;
+      };
+      empty: {
+        title: string;
+        description: string;
+      };
+    };
+    notification: {
+      section: {
+        notification: string;
+        notificationDesc: string;
+      };
+      empty: {
+        title: string;
+        description: string;
+      };
+    };
+    display: {
+      section: {
+        language: string;
+        languageDesc: string;
+      };
+      language: {
+        label: string;
+        description: string;
+      };
+    };
+    data: {
+      section: {
+        templates: string;
+        templatesDesc: string;
+      };
+    };
+    support: {
+      section: {
+        support: string;
+        supportDesc: string;
+      };
+      empty: {
+        title: string;
+        description: string;
+      };
+    };
+    appInfo: {
+      section: {
+        info: string;
+        infoDesc: string;
+        update: string;
+        updateDesc: string;
+      };
+      version: string;
+      versionDesc: string;
+      cliPath: string;
+      cliPathDesc: string;
+      loading: string;
+      error: string;
+    };
+    language: {
+      label: string;
+      ja: string;
+      jaDesc: string;
+      en: string;
+      enDesc: string;
+    };
     update: {
-      title: string;
-      subtitle: string;
-      checking: string;
       checkButton: string;
+      checkingButton: string;
+      downloadButton: string;
+      installButton: string;
+      retryButton: string;
+      restarting: string;
+      lastChecked: string;
+      newVersion: string;
+      autoUpdateError: string;
+      errorNetwork: string;
       status: {
         checking: string;
         available: string;
@@ -59,27 +157,6 @@ export interface MessageSchema {
         label: string;
         note: string;
       };
-      downloadButton: string;
-      restarting: string;
-      installButton: string;
-      retryButton: string;
-      autoUpdateError: string;
-    };
-    account: {
-      title: string;
-      logout: string;
-    };
-    appInfo: {
-      title: string;
-      version: string;
-      cliPath: string;
-      loading: string;
-      error: string;
-    };
-    language: {
-      label: string;
-      ja: string;
-      en: string;
     };
   };
    login: {
