@@ -57,8 +57,29 @@ if ($existingPrNumber -and $existingPrNumber -match '^\d+$') {
 
 Write-Host "PR Number: $prNumber" -ForegroundColor Green
 
+# Wait for CI checks to be registered (initial delay)
+Write-Host "Waiting for CI checks to be registered..." -ForegroundColor Cyan
+$maxRetries = 30
+$retryCount = 0
+
+while ($retryCount -lt $maxRetries) {
+    $checkStatus = gh pr checks $prNumber --json name --jq 'length' 2>$null
+    if ($LASTEXITCODE -eq 0 -and $checkStatus -gt 0) {
+        Write-Host "OK" -ForegroundColor Green
+        break
+    }
+    $retryCount++
+    if ($retryCount -lt $maxRetries) {
+        Write-Host "." -NoNewline -ForegroundColor DarkGray
+        Start-Sleep -Seconds 2
+    }
+}
+
+if ($retryCount -eq $maxRetries) {
+    Write-Host "`nWarning: CI checks not registered after 60 seconds. Proceeding anyway..." -ForegroundColor Yellow
+}
+
 # Wait for CI checks to complete using --watch
-# --watch automatically waits until all checks complete or timeout
 Write-Host "Waiting for CI checks to complete..." -ForegroundColor Cyan
 gh pr checks $prNumber --watch
 
