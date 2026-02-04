@@ -58,12 +58,27 @@ if ($existingPrNumber -and $existingPrNumber -match '^\d+$') {
 Write-Host "PR Number: $prNumber" -ForegroundColor Green
 
 # Wait for CI checks to complete
-# --watch waits until all checks complete and returns exit code based on result
+# Use --watch with longer timeout to handle registration delay
 Write-Host "Waiting for CI checks to complete..." -ForegroundColor Cyan
-gh pr checks $prNumber --watch
+$ErrorActionPreference = "SilentlyContinue"
+gh pr checks $prNumber --watch --interval 5
+$ErrorActionPreference = "Stop"
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nCI checks failed. Aborting merge." -ForegroundColor Red
+# Check final status using GitHub API (more reliable than --watch)
+$statusJson = gh pr view $prNumber --json statusCheckRollup
+$statusCheckRollup = $statusJson | ConvertFrom-Json | Select-Object -ExpandProperty statusCheckRollup
+
+# Determine if all checks passed
+$hasFailures = $statusCheckRollup | Where-Object { $_.conclusion -eq "FAILURE" }
+$hasIncomplete = $statusCheckRollup | Where-Object { $_.status -ne "COMPLETED" }
+
+if ($hasFailures) {
+    Write-Host "`nCI checks failed." -ForegroundColor Red
+    exit 1
+}
+
+if ($hasIncomplete) {
+    Write-Host "`nCI checks did not complete." -ForegroundColor Red
     exit 1
 }
 
