@@ -63,8 +63,13 @@ $maxRetries = 30
 $retryCount = 0
 
 while ($retryCount -lt $maxRetries) {
+    # Suppress error output temporarily to avoid exception when checks not yet registered
+    $ErrorActionPreference = "SilentlyContinue"
     $checkStatus = gh pr checks $prNumber --json name --jq 'length' 2>$null
-    if ($LASTEXITCODE -eq 0 -and $checkStatus -gt 0) {
+    $lastExitCode = $LASTEXITCODE
+    $ErrorActionPreference = "Stop"
+    
+    if ($lastExitCode -eq 0 -and $checkStatus -gt 0) {
         Write-Host "OK" -ForegroundColor Green
         break
     }
