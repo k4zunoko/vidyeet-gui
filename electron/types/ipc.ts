@@ -245,6 +245,7 @@ export const IpcChannels = {
   DELETE: "vidyeet:delete",
   SELECT_FILE: "vidyeet:selectFile",
   UPLOAD: "vidyeet:upload",
+  UPLOAD_CANCEL: "vidyeet:upload:cancel",
   CLIPBOARD_WRITE: "clipboard:write",
   SHELL_OPEN_EXTERNAL: "shell:openExternal",
   UPDATE_CHECK: "update:check",
@@ -276,6 +277,7 @@ export interface VidyeetApi {
     request: UploadRequest,
     onProgress?: (progress: UploadProgress) => void,
   ): Promise<UploadResponse | IpcError>;
+  cancelUpload(uploadId: string): Promise<{ success: boolean }>;
   getTemplates(): Promise<GetTemplatesResponse | IpcError>;
   getTemplate(request: GetTemplateRequest): Promise<CopyTemplate | IpcError>;
   saveTemplate(request: SaveTemplateRequest): Promise<SaveTemplateResponse | IpcError>;
