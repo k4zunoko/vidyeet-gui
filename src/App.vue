@@ -534,6 +534,63 @@ onBeforeUnmount(() => {
                                         </svg>
                                     </button>
                                     <button
+                                        v-if="uploadDialog.uploadDialogState.value.isUploading && !uploadDialog.uploadDialogState.value.errorMessage"
+                                        class="upload-control-button upload-cancel-button"
+                                        @click="uploadDialog.cancelCurrentUpload()"
+                                        :disabled="uploadDialog.uploadDialogState.value.isCancelling"
+                                        :aria-label="$t('app.upload.cancel')"
+                                        :title="uploadDialog.uploadDialogState.value.isCancelling ? $t('app.upload.cancelling') : $t('app.upload.cancel')"
+                                    >
+                                        <svg
+                                            v-if="!uploadDialog.uploadDialogState.value.isCancelling"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                        >
+                                            <circle
+                                                cx="8"
+                                                cy="8"
+                                                r="6"
+                                                stroke="currentColor"
+                                                stroke-width="1.5"
+                                            />
+                                            <path
+                                                d="M10 6L6 10M6 6l4 4"
+                                                stroke="currentColor"
+                                                stroke-width="1.5"
+                                                stroke-linecap="round"
+                                            />
+                                        </svg>
+                                        <svg
+                                            v-else
+                                            class="spinner"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                        >
+                                            <circle
+                                                cx="8"
+                                                cy="8"
+                                                r="6"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                fill="none"
+                                                stroke-dasharray="18.85 18.85"
+                                                stroke-linecap="round"
+                                            >
+                                                <animateTransform
+                                                    attributeName="transform"
+                                                    type="rotate"
+                                                    from="0 8 8"
+                                                    to="360 8 8"
+                                                    dur="1s"
+                                                    repeatCount="indefinite"
+                                                />
+                                            </circle>
+                                        </svg>
+                                    </button>
+                                    <button
                                         v-if="uploadDialog.uploadDialogState.value.errorMessage"
                                         class="upload-control-button"
                                         @click="uploadDialog.closeUploadDialog"
@@ -959,6 +1016,33 @@ onBeforeUnmount(() => {
 
 .upload-control-button:active {
     transform: scale(0.95);
+}
+
+.upload-cancel-button {
+    color: var(--color-text-muted);
+    transition: color 0.2s;
+}
+
+.upload-cancel-button:hover:not(:disabled) {
+    color: var(--color-error, #ef4444);
+}
+
+.upload-cancel-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.upload-cancel-button .spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* 最小化状態のコンパクトバー */
