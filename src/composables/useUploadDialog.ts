@@ -138,6 +138,9 @@ export function useUploadDialog(
   /** 現在アップロード中のuploadId */
   const currentUploadId = ref<string | null>(null);
 
+  /** 現在の進捗補間ハンドラ（キャンセル時のクリーンアップ用） */
+  let currentProgressCleanup: (() => void) | null = null;
+
   // ===========================================================================
   // Helper Functions
   // ===========================================================================
@@ -343,6 +346,7 @@ export function useUploadDialog(
     uploadDialogState.value.showProgressBar = false;
 
     const { onProgress, cleanup } = createUploadProgressHandler();
+    currentProgressCleanup = cleanup; // Store for potential cancellation
 
     // アップロード実行
     const uploadResult = await window.vidyeet.upload(
@@ -354,6 +358,7 @@ export function useUploadDialog(
       // エラー: キューに記録
       uploadQueue.markCurrentError(uploadResult.message);
       currentUploadId.value = null;
+      currentProgressCleanup = null;
       uploadDialogState.value.isUploading = false;
       uploadDialogState.value.errorMessage = uploadResult.message;
       cleanup();
@@ -371,6 +376,7 @@ export function useUploadDialog(
      // 成功: キューに記録
      uploadQueue.markCurrentCompleted(uploadResult.assetId);
      currentUploadId.value = null;
+     currentProgressCleanup = null;
      uploadDialogState.value.phase = "completed";
      uploadDialogState.value.phaseText = `${t("uploadPhase.completed")}！`;
      uploadDialogState.value.isUploading = false;
@@ -481,13 +487,18 @@ export function useUploadDialog(
         // Clean up state
         currentUploadId.value = null;
         uploadDialogState.value.isCancelling = false;
+        uploadDialogState.value.isUploading = false;
         
-        // Get progress handler reference for cleanup
-        const { cleanup } = createUploadProgressHandler();
-        cleanup();
+        // Clean up progress interpolation if exists
+        if (currentProgressCleanup) {
+          currentProgressCleanup();
+          currentProgressCleanup = null;
+        }
         
         // Continue to next item in queue
-        processUploadQueue();
+        setTimeout(() => {
+          processUploadQueue();
+        }, 500);
       } else {
         // Upload already completed/not found
         console.warn("Upload not found or already completed");
