@@ -141,6 +141,9 @@ export function useUploadDialog(
   /** 現在の進捗補間ハンドラ（キャンセル時のクリーンアップ用） */
   let currentProgressCleanup: (() => void) | null = null;
 
+  /** キャンセル処理中フラグ（processUploadQueueの重複呼び出し防止） */
+  let isCancelInProgress = false;
+
   // ===========================================================================
   // Helper Functions
   // ===========================================================================
@@ -306,6 +309,11 @@ export function useUploadDialog(
    * アップロードキューを処理
    */
   async function processUploadQueue() {
+    // キャンセル処理中の場合はスキップ（重複呼び出し防止）
+    if (isCancelInProgress) {
+      return;
+    }
+
     // 次のアイテムを取得
     const item = uploadQueue.startNext();
     if (!item) {
@@ -356,6 +364,13 @@ export function useUploadDialog(
     );
 
     if (isIpcError(uploadResult)) {
+      // キャンセル処理中の場合は、エラー処理をスキップ
+      // （キャンセル側で既に次のキュー処理をスケジュール済み）
+      if (isCancelInProgress) {
+        isCancelInProgress = false; // Reset flag
+        return;
+      }
+
       // エラー: キューに記録
       uploadQueue.markCurrentError(uploadResult.message);
       currentUploadId.value = null;
@@ -470,6 +485,9 @@ export function useUploadDialog(
 
     const uploadIdToCancel = currentUploadId.value;
     
+    // Set cancel flag to prevent duplicate queue processing
+    isCancelInProgress = true;
+    
     // Set cancelling state immediately (Doherty Threshold: <100ms feedback)
     uploadDialogState.value.isCancelling = true;
     uploadQueue.updateCurrentStatus("cancelling");
@@ -497,18 +515,22 @@ export function useUploadDialog(
         }
         
         // Continue to next item in queue
+        // Note: isCancelInProgress will be reset when processUploadQueue starts
         setTimeout(() => {
+          isCancelInProgress = false; // Reset before calling next queue
           processUploadQueue();
         }, 500);
       } else {
         // Upload already completed/not found
         console.warn("Upload not found or already completed");
         uploadDialogState.value.isCancelling = false;
+        isCancelInProgress = false;
       }
     } catch (error) {
       console.error("Failed to cancel upload:", error);
       showToast("error", "キャンセルに失敗しました");
       uploadDialogState.value.isCancelling = false;
+      isCancelInProgress = false;
     }
   }
 
