@@ -141,6 +141,9 @@ export function useUploadDialog(
   /** 現在の進捗補間ハンドラ（キャンセル時のクリーンアップ用） */
   let currentProgressCleanup: (() => void) | null = null;
 
+  /** キャンセル処理が実行されたかどうか（2重処理防止用） */
+  let cancelHandled = false;
+
   // ===========================================================================
   // Helper Functions
   // ===========================================================================
@@ -334,6 +337,7 @@ export function useUploadDialog(
 
      // アップロード状態を初期化
      currentUploadId.value = null; // Reset before new upload
+     cancelHandled = false; // Reset cancel flag for new upload
      uploadDialogState.value.fileName = item.fileName;
      uploadDialogState.value.phase = "starting";
      uploadDialogState.value.phaseText = t("uploadPhase.starting");
@@ -354,6 +358,13 @@ export function useUploadDialog(
       { filePath: item.filePath },
       onProgress,
     );
+
+    // Check if this upload was cancelled by user
+    // If so, skip error handling as it's already handled by cancelCurrentUpload()
+    if (cancelHandled) {
+      // Cancel handling is in progress, don't process result here
+      return;
+    }
 
     if (isIpcError(uploadResult)) {
       // エラー: キューに記録
@@ -473,6 +484,7 @@ export function useUploadDialog(
     // Set cancelling state immediately (Doherty Threshold: <100ms feedback)
     uploadDialogState.value.isCancelling = true;
     uploadQueue.updateCurrentStatus("cancelling");
+    cancelHandled = true; // Mark that cancel has been handled to prevent double processing
 
     try {
       // Call IPC to kill CLI process
@@ -504,11 +516,13 @@ export function useUploadDialog(
         // Upload already completed/not found
         console.warn("Upload not found or already completed");
         uploadDialogState.value.isCancelling = false;
+        cancelHandled = false; // Reset flag if cancel failed
       }
     } catch (error) {
       console.error("Failed to cancel upload:", error);
       showToast("error", "キャンセルに失敗しました");
       uploadDialogState.value.isCancelling = false;
+      cancelHandled = false; // Reset flag if cancel failed
     }
   }
 
