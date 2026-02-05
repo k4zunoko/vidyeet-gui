@@ -65,7 +65,7 @@ if ($existing -and $existing.Trim() -ne "null" -and $existing.Trim() -ne "") {
 # --- Create new PR ---
 Info "Creating PR (head: $currentBranch -> base: $BaseBranch)..."
 
-$prResult = gh pr create --base $BaseBranch --fill --web 2>&1
+$prResult = gh pr create --base $BaseBranch --fill 2>&1
 $exitCode = $LASTEXITCODE
 
 if ($exitCode -ne 0) {
