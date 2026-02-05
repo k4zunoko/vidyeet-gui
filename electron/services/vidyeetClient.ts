@@ -23,8 +23,23 @@ import type {
 } from "../types/ipc";
 import { isIpcError } from "../types/ipc";
 import { dialog, BrowserWindow } from "electron";
-import { spawn } from "child_process";
+import { spawn, type ChildProcess } from "child_process";
 import path from "node:path";
+
+// =============================================================================
+// Upload State Management
+// =============================================================================
+
+/** Map of active uploads by uploadId */
+const activeUploads = new Map<string, ChildProcess>();
+let uploadIdCounter = 0;
+
+/**
+ * Generate a unique upload ID
+ */
+function generateUploadId(): string {
+  return `upload-${Date.now()}-${++uploadIdCounter}`;
+}
 
 // =============================================================================
 // CLI Response Types (internal)
@@ -284,10 +299,14 @@ export function upload(
   return new Promise((resolve) => {
     const cliPath = resolveCliPath();
     const args = ["--machine", "upload", request.filePath, "--progress"];
+    const uploadId = generateUploadId();
 
     const child = spawn(cliPath, args, {
       stdio: ["ignore", "pipe", "pipe"],
     });
+
+    // Store child process for potential cancellation
+    activeUploads.set(uploadId, child);
 
     let stdout = "";
     let stderr = "";
@@ -309,7 +328,7 @@ export function upload(
               fileName: json.file_name,
               sizeBytes: json.size_bytes,
               format: json.format,
-              uploadId: json.upload_id,
+              uploadId,
               percent: json.percent,
               // Fields for uploading_chunk phase
               currentChunk: json.current_chunk,
@@ -348,6 +367,7 @@ export function upload(
     });
 
     child.on("error", (err) => {
+      activeUploads.delete(uploadId);
       resolve({
         code: "CLI_NOT_FOUND",
         message: `Failed to launch CLI: ${err.message}`,
@@ -355,6 +375,7 @@ export function upload(
     });
 
     child.on("close", (code) => {
+      activeUploads.delete(uploadId);
       // Normal exit (resolve should already be completed in stdout processing)
       if (code !== 0 && !stdout.includes('"success":true')) {
         resolve({
@@ -365,4 +386,24 @@ export function upload(
       }
     });
   });
+}
+
+// =============================================================================
+// Upload Cancellation
+// =============================================================================
+
+/**
+ * Cancel an active upload by killing its CLI process
+ * @param uploadId The upload ID to cancel
+ * @returns true if cancelled, false if upload not found
+ */
+export function cancelUpload(uploadId: string): boolean {
+  const child = activeUploads.get(uploadId);
+  if (!child) {
+    return false; // Already completed or invalid ID
+  }
+
+  child.kill(); // On Windows, this sends termination signal
+  activeUploads.delete(uploadId);
+  return true;
 }
