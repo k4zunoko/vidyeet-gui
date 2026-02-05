@@ -5,6 +5,8 @@
  * カテゴリー間を切り替えるためのサイドバー
  * アクセシビリティ: aria-current対応
  */
+import { useI18n } from 'vue-i18n';
+
 interface Category {
     id: string;
     label: string;
@@ -22,6 +24,8 @@ const emit = defineEmits<{
     select: [categoryId: string];
 }>();
 
+const { t } = useI18n();
+
 function handleSelect(categoryId: string) {
     emit("select", categoryId);
 }
@@ -29,7 +33,7 @@ function handleSelect(categoryId: string) {
 
 <template>
     <aside class="settings-sidebar">
-        <nav class="sidebar-nav" aria-label="設定カテゴリー">
+        <nav class="sidebar-nav" :aria-label="t('settings.categoriesAriaLabel')">
             <ul class="category-list">
                 <li
                     v-for="category in categories"

@@ -30,10 +30,11 @@ export interface MessageSchema {
       linkCopied: string;
     };
   };
-  settings: {
-    title: string;
-    close: string;
-    aria: {
+   settings: {
+     title: string;
+     close: string;
+     categoriesAriaLabel: string;
+     aria: {
       close: string;
       updateProgress: string;
     };
@@ -194,23 +195,62 @@ export interface MessageSchema {
     uploadButton: string;
     uploadAria: string;
   };
-  player: {
-    selectVideo: string;
-    selectHint: string;
-    loading: string;
-    retry: string;
-  };
+   player: {
+     selectVideo: string;
+     selectHint: string;
+     loading: string;
+     retry: string;
+     errors: {
+       networkError: string;
+       mediaError: string;
+       playbackError: string;
+       hlsNotSupported: string;
+     };
+   };
   videoCard: {
     ariaPrefix: string;
     unplayable: string;
     playing: string;
   };
-  contextMenu: {
-    ariaLabel: string;
-    copyLink: string;
-    delete: string;
-  };
-  infoPanel: {
+   contextMenu: {
+     ariaLabel: string;
+     copyLink: string;
+     copyTemplates: string;
+     delete: string;
+   };
+   copyTemplate: {
+     title: string;
+     nameLabel: string;
+     contentLabel: string;
+     addTitle: string;
+     addButton: string;
+     adding: string;
+     editButton: string;
+     deleteButton: string;
+     cancelButton: string;
+     saveButton: string;
+     deleteConfirm: string;
+     empty: string;
+     namePlaceholder: string;
+     contentPlaceholder: string;
+     variablesHelp: string;
+     errors: {
+       emptyName: string;
+       emptyContent: string;
+       invalidVariable: string;
+       duplicateName: string;
+       deleteFailed: string;
+     };
+     toast: {
+       copySuccess: string;
+       copyError: string;
+       saveSuccess: string;
+       saveError: string;
+       deleteSuccess: string;
+       deleteError: string;
+     };
+   };
+   infoPanel: {
     duration: string;
     resolution: string;
     aspectRatio: string;
@@ -218,17 +258,25 @@ export interface MessageSchema {
     createdAt: string;
     status: string;
   };
-  dragDrop: {
-    message: string;
-    hint: string;
-  };
-  titleBar: {
-    reload: string;
-    settings: string;
-    restore: string;
-    maximize: string;
-    close: string;
-  };
+   dragDrop: {
+     message: string;
+     hint: string;
+   };
+   sideDrawer: {
+     upload: string;
+     logout: string;
+   };
+   toast: {
+     close: string;
+   };
+    titleBar: {
+     reload: string;
+     settings: string;
+     minimize: string;
+     restore: string;
+     maximize: string;
+     close: string;
+   };
   uploadPhase: {
     validating: string;
     validationComplete: string;
@@ -240,8 +288,11 @@ export interface MessageSchema {
     done: string;
     starting: string;
   };
-  uploadErrors: {
-    pathError: string;
-    uploadFailed: string;
-  };
+   uploadErrors: {
+     pathError: string;
+     uploadFailed: string;
+     cancelled: string;
+     cancelSuccess: string;
+     cancelFailed: string;
+   };
 }

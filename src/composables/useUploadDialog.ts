@@ -490,12 +490,12 @@ export function useUploadDialog(
       // Call IPC to kill CLI process
       const result = await window.vidyeet.cancelUpload(uploadIdToCancel);
       
-      if (result.success) {
-        // Mark as error with neutral message
-        uploadQueue.markCurrentError("キャンセルされました");
-        
-        // Show toast notification
-        showToast("info", "アップロードをキャンセルしました");
+       if (result.success) {
+         // Mark as error with neutral message
+         uploadQueue.markCurrentError(t("uploadErrors.cancelled"));
+         
+         // Show toast notification
+         showToast("info", t("uploadErrors.cancelSuccess"));
         
         // Clean up state
         currentUploadId.value = null;
@@ -518,12 +518,12 @@ export function useUploadDialog(
         uploadDialogState.value.isCancelling = false;
         cancelHandled = false; // Reset flag if cancel failed
       }
-    } catch (error) {
-      console.error("Failed to cancel upload:", error);
-      showToast("error", "キャンセルに失敗しました");
-      uploadDialogState.value.isCancelling = false;
-      cancelHandled = false; // Reset flag if cancel failed
-    }
+     } catch (error) {
+       console.error("Failed to cancel upload:", error);
+       showToast("error", t("uploadErrors.cancelFailed"));
+       uploadDialogState.value.isCancelling = false;
+       cancelHandled = false; // Reset flag if cancel failed
+     }
   }
 
   /**

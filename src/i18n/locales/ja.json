@@ -29,10 +29,11 @@
       "linkCopied": "リンクをコピーしました"
     }
   },
-  "settings": {
-    "title": "設定",
-    "close": "閉じる",
-    "aria": {
+   "settings": {
+     "title": "設定",
+     "close": "閉じる",
+     "categoriesAriaLabel": "設定カテゴリー",
+     "aria": {
       "close": "設定を閉じる",
       "updateProgress": "アップデート進捗"
     },
@@ -193,12 +194,18 @@
     "uploadButton": "動画をアップロード",
     "uploadAria": "動画をアップロード"
   },
-  "player": {
-    "selectVideo": "動画を選択してください",
-    "selectHint": "左の一覧から動画をクリック",
-    "loading": "読み込み中...",
-    "retry": "再試行"
-  },
+   "player": {
+     "selectVideo": "動画を選択してください",
+     "selectHint": "左の一覧から動画をクリック",
+     "loading": "読み込み中...",
+     "retry": "再試行",
+     "errors": {
+       "networkError": "ネットワークエラーが発生しました。接続を確認してください。",
+       "mediaError": "メディアエラーが発生しました。別の動画を試してください。",
+       "playbackError": "再生エラーが発生しました。",
+       "hlsNotSupported": "このブラウザはHLS再生に対応していません。"
+     }
+   },
   "videoCard": {
     "ariaPrefix": "動画",
     "unplayable": "再生不可",
@@ -210,37 +217,38 @@
     "copyTemplates": "テンプレートでコピー",
     "delete": "削除"
   },
-  "copyTemplate": {
-    "title": "コピーテンプレート",
-    "nameLabel": "テンプレート名",
-    "contentLabel": "テンプレート内容",
-    "addTitle": "新規テンプレート",
-    "addButton": "追加",
-    "adding": "追加中...",
-    "editButton": "編集",
-    "deleteButton": "削除",
-    "cancelButton": "キャンセル",
-    "saveButton": "保存",
-    "deleteConfirm": "削除しますか？",
-    "empty": "テンプレートがありません",
-    "namePlaceholder": "テンプレート名を入力",
-    "contentPlaceholder": "例: https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
-    "variablesHelp": "利用可能な変数",
-    "errors": {
-      "emptyName": "テンプレート名を入力してください",
-      "emptyContent": "テンプレート内容を入力してください",
-      "invalidVariable": "不明な変数: {var}",
-      "duplicateName": "同じ名前のテンプレートが存在します"
-    },
-    "toast": {
-      "copySuccess": "{name} をクリップボードにコピーしました",
-      "copyError": "コピーに失敗しました: {reason}",
-      "saveSuccess": "テンプレートを保存しました",
-      "saveError": "テンプレートの保存に失敗しました",
-      "deleteSuccess": "テンプレートを削除しました",
-      "deleteError": "テンプレートの削除に失敗しました"
-    }
-  },
+   "copyTemplate": {
+     "title": "コピーテンプレート",
+     "nameLabel": "テンプレート名",
+     "contentLabel": "テンプレート内容",
+     "addTitle": "新規テンプレート",
+     "addButton": "追加",
+     "adding": "追加中...",
+     "editButton": "編集",
+     "deleteButton": "削除",
+     "cancelButton": "キャンセル",
+     "saveButton": "保存",
+     "deleteConfirm": "削除しますか？",
+     "empty": "テンプレートがありません",
+     "namePlaceholder": "テンプレート名を入力",
+     "contentPlaceholder": "例: https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
+     "variablesHelp": "利用可能な変数",
+     "errors": {
+       "emptyName": "テンプレート名を入力してください",
+       "emptyContent": "テンプレート内容を入力してください",
+       "invalidVariable": "不明な変数: {var}",
+       "duplicateName": "同じ名前のテンプレートが存在します",
+       "deleteFailed": "テンプレートの削除に失敗しました"
+     },
+     "toast": {
+       "copySuccess": "{name} をクリップボードにコピーしました",
+       "copyError": "コピーに失敗しました: {reason}",
+       "saveSuccess": "テンプレートを保存しました",
+       "saveError": "テンプレートの保存に失敗しました",
+       "deleteSuccess": "テンプレートを削除しました",
+       "deleteError": "テンプレートの削除に失敗しました"
+     }
+   },
   "infoPanel": {
     "duration": "時間",
     "resolution": "解像度",
@@ -256,6 +264,7 @@
   "titleBar": {
     "reload": "リロード",
     "settings": "設定",
+    "minimize": "最小化",
     "restore": "元に戻す",
     "maximize": "最大化",
     "close": "閉じる"
@@ -278,8 +287,11 @@
     "done": "完了",
     "starting": "開始"
   },
-  "uploadErrors": {
-    "pathError": "ファイルパスが不正です",
-    "uploadFailed": "アップロードに失敗しました"
-  }
+   "uploadErrors": {
+     "pathError": "ファイルパスが不正です",
+     "uploadFailed": "アップロードに失敗しました",
+     "cancelled": "キャンセルされました",
+     "cancelSuccess": "アップロードをキャンセルしました",
+     "cancelFailed": "キャンセルに失敗しました"
+   }
 }

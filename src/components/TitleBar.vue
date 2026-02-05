@@ -104,12 +104,12 @@ onUnmounted(() => {
          </svg>
        </button>
 
-       <!-- 最小化 -->
-       <button
-         class="control-button minimize"
-         title="最小化"
-         @click="handleMinimize"
-       >
+        <!-- 最小化 -->
+        <button
+          class="control-button minimize"
+          :title="t('titleBar.minimize')"
+          @click="handleMinimize"
+        >
          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
            <rect x="2" y="5.5" width="8" height="1" />
          </svg>

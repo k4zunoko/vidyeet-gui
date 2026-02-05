@@ -29,10 +29,11 @@
       "linkCopied": "Link copied"
     }
   },
-  "settings": {
-    "title": "Settings",
-    "close": "Close",
-    "aria": {
+   "settings": {
+     "title": "Settings",
+     "close": "Close",
+     "categoriesAriaLabel": "Settings categories",
+     "aria": {
       "close": "Close settings",
       "updateProgress": "Update progress"
     },
@@ -193,12 +194,18 @@
     "uploadButton": "Upload video",
     "uploadAria": "Upload video"
   },
-  "player": {
-    "selectVideo": "Please select a video",
-    "selectHint": "Click a video from the list on the left",
-    "loading": "Loading...",
-    "retry": "Retry"
-  },
+   "player": {
+     "selectVideo": "Please select a video",
+     "selectHint": "Click a video from the list on the left",
+     "loading": "Loading...",
+     "retry": "Retry",
+     "errors": {
+       "networkError": "A network error occurred. Please check your connection.",
+       "mediaError": "A media error occurred. Please try another video.",
+       "playbackError": "A playback error occurred.",
+       "hlsNotSupported": "This browser does not support HLS playback."
+     }
+   },
   "videoCard": {
     "ariaPrefix": "Video:",
     "unplayable": "Unplayable",
@@ -210,37 +217,38 @@
     "copyTemplates": "Copy with Template",
     "delete": "Delete"
   },
-  "copyTemplate": {
-    "title": "Copy Templates",
-    "nameLabel": "Template Name",
-    "contentLabel": "Template Content",
-    "addTitle": "New Template",
-    "addButton": "Add",
-    "adding": "Adding...",
-    "editButton": "Edit",
-    "deleteButton": "Delete",
-    "cancelButton": "Cancel",
-    "saveButton": "Save",
-    "deleteConfirm": "Delete this template?",
-    "empty": "No templates",
-    "namePlaceholder": "Enter template name",
-    "contentPlaceholder": "e.g., https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
-    "variablesHelp": "Available Variables",
-    "errors": {
-      "emptyName": "Please enter a template name",
-      "emptyContent": "Please enter template content",
-      "invalidVariable": "Unknown variable: {var}",
-      "duplicateName": "A template with this name already exists"
-    },
-    "toast": {
-      "copySuccess": "{name} copied to clipboard",
-      "copyError": "Could not copy: {reason}",
-      "saveSuccess": "Template saved",
-      "saveError": "Failed to save template",
-      "deleteSuccess": "Template deleted",
-      "deleteError": "Failed to delete template"
-    }
-  },
+   "copyTemplate": {
+     "title": "Copy Templates",
+     "nameLabel": "Template Name",
+     "contentLabel": "Template Content",
+     "addTitle": "New Template",
+     "addButton": "Add",
+     "adding": "Adding...",
+     "editButton": "Edit",
+     "deleteButton": "Delete",
+     "cancelButton": "Cancel",
+     "saveButton": "Save",
+     "deleteConfirm": "Delete this template?",
+     "empty": "No templates",
+     "namePlaceholder": "Enter template name",
+     "contentPlaceholder": "e.g., https://image.mux.com/{'${'}PLAYBACK_ID{'}'}/animated.gif",
+     "variablesHelp": "Available Variables",
+     "errors": {
+       "emptyName": "Please enter a template name",
+       "emptyContent": "Please enter template content",
+       "invalidVariable": "Unknown variable: {var}",
+       "duplicateName": "A template with this name already exists",
+       "deleteFailed": "Failed to delete template"
+     },
+     "toast": {
+       "copySuccess": "{name} copied to clipboard",
+       "copyError": "Could not copy: {reason}",
+       "saveSuccess": "Template saved",
+       "saveError": "Failed to save template",
+       "deleteSuccess": "Template deleted",
+       "deleteError": "Failed to delete template"
+     }
+   },
   "infoPanel": {
     "duration": "Duration",
     "resolution": "Resolution",
@@ -256,6 +264,7 @@
   "titleBar": {
     "reload": "Reload",
     "settings": "Settings",
+    "minimize": "Minimize",
     "restore": "Restore",
     "maximize": "Maximize",
     "close": "Close"
@@ -278,8 +287,11 @@
     "done": "Done",
     "starting": "Starting"
   },
-  "uploadErrors": {
-    "pathError": "Invalid file path",
-    "uploadFailed": "Upload failed"
-  }
+   "uploadErrors": {
+     "pathError": "Invalid file path",
+     "uploadFailed": "Upload failed",
+     "cancelled": "Cancelled",
+     "cancelSuccess": "Upload cancelled",
+     "cancelFailed": "Failed to cancel upload"
+   }
 }
