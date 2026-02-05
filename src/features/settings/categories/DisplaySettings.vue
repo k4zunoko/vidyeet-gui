@@ -20,12 +20,10 @@ const languageOptions = computed(() => [
     {
         value: "ja",
         label: t("settings.language.ja"),
-        description: t("settings.language.jaDesc"),
     },
     {
         value: "en",
         label: t("settings.language.en"),
-        description: t("settings.language.enDesc"),
     },
 ]);
 
