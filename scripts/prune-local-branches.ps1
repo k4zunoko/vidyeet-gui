@@ -75,7 +75,7 @@ foreach ($line in $localWithUpstream) {
     if ($remoteRefs.ContainsKey($upstream)) { continue }
 
     # Upstream is gone: candidate. Check if patch-equivalent to main (handles squash merges).
-    git diff --quiet "main...$branch" *> $null
+    git diff --quiet "main" "$branch" *> $null
     if ($LASTEXITCODE -eq 0) {
         $candidates.Add($branch)
     } else {
