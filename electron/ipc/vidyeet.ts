@@ -80,8 +80,8 @@ export function registerVidyeetHandlers(): void {
   /**
    * vidyeet:upload:cancel - Cancel active upload
    */
-  ipcMain.handle(IpcChannels.UPLOAD_CANCEL, async (_event, uploadId: string) => {
-    const success = cancelUpload(uploadId);
+  ipcMain.handle(IpcChannels.UPLOAD_CANCEL, async (_event, payload: { uploadId: string }) => {
+    const success = cancelUpload(payload.uploadId);
     return { success };
   });
 }

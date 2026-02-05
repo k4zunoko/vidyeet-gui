@@ -333,6 +333,7 @@ export function useUploadDialog(
     }
 
      // アップロード状態を初期化
+     currentUploadId.value = null; // Reset before new upload
      uploadDialogState.value.fileName = item.fileName;
      uploadDialogState.value.phase = "starting";
      uploadDialogState.value.phaseText = t("uploadPhase.starting");
