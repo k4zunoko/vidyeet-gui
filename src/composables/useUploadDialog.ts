@@ -138,11 +138,8 @@ export function useUploadDialog(
   /** 現在アップロード中のuploadId */
   const currentUploadId = ref<string | null>(null);
 
-   /** 現在の進捗補間ハンドラ（キャンセル時のクリーンアップ用） */
-   let currentProgressCleanup: (() => void) | null = null;
-
-   /** 保留中のキュー処理タイマーID（二重実行防止用） */
-   let pendingQueueTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 現在の進捗補間ハンドラ（キャンセル時のクリーンアップ用） */
+  let currentProgressCleanup: (() => void) | null = null;
 
   // ===========================================================================
   // Helper Functions
@@ -358,44 +355,42 @@ export function useUploadDialog(
       onProgress,
     );
 
-     if (isIpcError(uploadResult)) {
-       // エラー: キューに記録
-       uploadQueue.markCurrentError(uploadResult.message);
-       currentUploadId.value = null;
-       currentProgressCleanup = null;
-       uploadDialogState.value.isUploading = false;
-       uploadDialogState.value.errorMessage = uploadResult.message;
-       cleanup();
-
-        // エラートースト表示
-        showToast("error", `${item.fileName}: ${t("uploadErrors.uploadFailed")}`);
-
-       // 次のファイルを処理（少し待ってから）
-       pendingQueueTimer = setTimeout(() => {
-         pendingQueueTimer = null;
-         processUploadQueue();
-       }, 1000);
-       return;
-     }
-
-      // 成功: キューに記録
-      uploadQueue.markCurrentCompleted(uploadResult.assetId);
+    if (isIpcError(uploadResult)) {
+      // エラー: キューに記録
+      uploadQueue.markCurrentError(uploadResult.message);
       currentUploadId.value = null;
       currentProgressCleanup = null;
-      uploadDialogState.value.phase = "completed";
-      uploadDialogState.value.phaseText = `${t("uploadPhase.completed")}！`;
       uploadDialogState.value.isUploading = false;
+      uploadDialogState.value.errorMessage = uploadResult.message;
+      cleanup();
 
-     // 個別リロード: 成功したファイルをすぐに一覧に追加
-     onUploadComplete();
+       // エラートースト表示
+       showToast("error", `${item.fileName}: ${t("uploadErrors.uploadFailed")}`);
 
-     cleanup();
+      // 次のファイルを処理（少し待ってから）
+      setTimeout(() => {
+        processUploadQueue();
+      }, 1000);
+      return;
+    }
 
-     // 次のファイルを処理（少し待ってから）
-     pendingQueueTimer = setTimeout(() => {
-       pendingQueueTimer = null;
-       processUploadQueue();
-     }, 800);
+     // 成功: キューに記録
+     uploadQueue.markCurrentCompleted(uploadResult.assetId);
+     currentUploadId.value = null;
+     currentProgressCleanup = null;
+     uploadDialogState.value.phase = "completed";
+     uploadDialogState.value.phaseText = `${t("uploadPhase.completed")}！`;
+     uploadDialogState.value.isUploading = false;
+
+    // 個別リロード: 成功したファイルをすぐに一覧に追加
+    onUploadComplete();
+
+    cleanup();
+
+    // 次のファイルを処理（少し待ってから）
+    setTimeout(() => {
+      processUploadQueue();
+    }, 800);
   }
 
   // ===========================================================================
@@ -464,65 +459,58 @@ export function useUploadDialog(
     }
   }
 
-   /**
-    * Cancel the currently uploading file
-    */
-   async function cancelCurrentUpload(): Promise<void> {
-     if (!currentUploadId.value) {
-       console.warn("No active upload to cancel");
-       return;
-     }
+  /**
+   * Cancel the currently uploading file
+   */
+  async function cancelCurrentUpload(): Promise<void> {
+    if (!currentUploadId.value) {
+      console.warn("No active upload to cancel");
+      return;
+    }
 
-     const uploadIdToCancel = currentUploadId.value;
-     
-     // Set cancelling state immediately (Doherty Threshold: <100ms feedback)
-     uploadDialogState.value.isCancelling = true;
-     uploadQueue.updateCurrentStatus("cancelling");
+    const uploadIdToCancel = currentUploadId.value;
+    
+    // Set cancelling state immediately (Doherty Threshold: <100ms feedback)
+    uploadDialogState.value.isCancelling = true;
+    uploadQueue.updateCurrentStatus("cancelling");
 
-     try {
-       // Call IPC to kill CLI process
-       const result = await window.vidyeet.cancelUpload(uploadIdToCancel);
-       
-       if (result.success) {
-         // Clear any pending error handler timer to prevent double queue processing
-         if (pendingQueueTimer) {
-           clearTimeout(pendingQueueTimer);
-           pendingQueueTimer = null;
-         }
-         
-         // Mark as error with neutral message
-         uploadQueue.markCurrentError("キャンセルされました");
-         
-         // Show toast notification
-         showToast("info", "アップロードをキャンセルしました");
-         
-         // Clean up state
-         currentUploadId.value = null;
-         uploadDialogState.value.isCancelling = false;
-         uploadDialogState.value.isUploading = false;
-         
-         // Clean up progress interpolation if exists
-         if (currentProgressCleanup) {
-           currentProgressCleanup();
-           currentProgressCleanup = null;
-         }
-         
-         // Continue to next item in queue
-         pendingQueueTimer = setTimeout(() => {
-           pendingQueueTimer = null;
-           processUploadQueue();
-         }, 500);
-       } else {
-         // Upload already completed/not found
-         console.warn("Upload not found or already completed");
-         uploadDialogState.value.isCancelling = false;
-       }
-     } catch (error) {
-       console.error("Failed to cancel upload:", error);
-       showToast("error", "キャンセルに失敗しました");
-       uploadDialogState.value.isCancelling = false;
-     }
-   }
+    try {
+      // Call IPC to kill CLI process
+      const result = await window.vidyeet.cancelUpload(uploadIdToCancel);
+      
+      if (result.success) {
+        // Mark as error with neutral message
+        uploadQueue.markCurrentError("キャンセルされました");
+        
+        // Show toast notification
+        showToast("info", "アップロードをキャンセルしました");
+        
+        // Clean up state
+        currentUploadId.value = null;
+        uploadDialogState.value.isCancelling = false;
+        uploadDialogState.value.isUploading = false;
+        
+        // Clean up progress interpolation if exists
+        if (currentProgressCleanup) {
+          currentProgressCleanup();
+          currentProgressCleanup = null;
+        }
+        
+        // Continue to next item in queue
+        setTimeout(() => {
+          processUploadQueue();
+        }, 500);
+      } else {
+        // Upload already completed/not found
+        console.warn("Upload not found or already completed");
+        uploadDialogState.value.isCancelling = false;
+      }
+    } catch (error) {
+      console.error("Failed to cancel upload:", error);
+      showToast("error", "キャンセルに失敗しました");
+      uploadDialogState.value.isCancelling = false;
+    }
+  }
 
   /**
    * キュー内のアイテムをキャンセル
