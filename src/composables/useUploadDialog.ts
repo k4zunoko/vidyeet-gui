@@ -60,6 +60,8 @@ export interface UploadDialogState {
   totalBytes: number;
   /** プログレスバーを表示するか */
   showProgressBar: boolean;
+  /** キャンセル処理中かどうか */
+  isCancelling: boolean;
 }
 
 /** useUploadDialog のオプション */
@@ -80,6 +82,8 @@ export interface UseUploadDialog {
   handleMultipleFiles: (files: File[]) => Promise<void>;
   /** アップロードダイアログを閉じる */
   closeUploadDialog: () => void;
+  /** 現在アップロード中のファイルをキャンセル */
+  cancelCurrentUpload: () => Promise<void>;
   /** アップロードダイアログを最小化 */
   minimizeUploadDialog: () => void;
   /** アップロードダイアログを復元 */
@@ -125,10 +129,14 @@ export function useUploadDialog(
     bytesSent: 0,
     totalBytes: 0,
     showProgressBar: false,
+    isCancelling: false,
   });
 
   /** アップロードキュー */
   const uploadQueue = useUploadQueue();
+
+  /** 現在アップロード中のuploadId */
+  const currentUploadId = ref<string | null>(null);
 
   // ===========================================================================
   // Helper Functions
@@ -181,6 +189,11 @@ export function useUploadDialog(
     > | null = null;
 
     const onProgress = (progress: UploadProgress) => {
+      // Capture uploadId when first available
+      if (progress.uploadId && !currentUploadId.value) {
+        currentUploadId.value = progress.uploadId;
+      }
+
       // 進捗更新
       uploadDialogState.value.phase = progress.phase;
       uploadDialogState.value.phaseText = getPhaseText(progress.phase);
@@ -340,6 +353,7 @@ export function useUploadDialog(
     if (isIpcError(uploadResult)) {
       // エラー: キューに記録
       uploadQueue.markCurrentError(uploadResult.message);
+      currentUploadId.value = null;
       uploadDialogState.value.isUploading = false;
       uploadDialogState.value.errorMessage = uploadResult.message;
       cleanup();
@@ -356,6 +370,7 @@ export function useUploadDialog(
 
      // 成功: キューに記録
      uploadQueue.markCurrentCompleted(uploadResult.assetId);
+     currentUploadId.value = null;
      uploadDialogState.value.phase = "completed";
      uploadDialogState.value.phaseText = `${t("uploadPhase.completed")}！`;
      uploadDialogState.value.isUploading = false;
@@ -438,6 +453,54 @@ export function useUploadDialog(
   }
 
   /**
+   * Cancel the currently uploading file
+   */
+  async function cancelCurrentUpload(): Promise<void> {
+    if (!currentUploadId.value) {
+      console.warn("No active upload to cancel");
+      return;
+    }
+
+    const uploadIdToCancel = currentUploadId.value;
+    
+    // Set cancelling state immediately (Doherty Threshold: <100ms feedback)
+    uploadDialogState.value.isCancelling = true;
+    uploadQueue.updateCurrentStatus("cancelling");
+
+    try {
+      // Call IPC to kill CLI process
+      const result = await window.vidyeet.cancelUpload(uploadIdToCancel);
+      
+      if (result.success) {
+        // Mark as error with neutral message
+        uploadQueue.markCurrentError("キャンセルされました");
+        
+        // Show toast notification
+        showToast("info", "アップロードをキャンセルしました");
+        
+        // Clean up state
+        currentUploadId.value = null;
+        uploadDialogState.value.isCancelling = false;
+        
+        // Get progress handler reference for cleanup
+        const { cleanup } = createUploadProgressHandler();
+        cleanup();
+        
+        // Continue to next item in queue
+        processUploadQueue();
+      } else {
+        // Upload already completed/not found
+        console.warn("Upload not found or already completed");
+        uploadDialogState.value.isCancelling = false;
+      }
+    } catch (error) {
+      console.error("Failed to cancel upload:", error);
+      showToast("error", "キャンセルに失敗しました");
+      uploadDialogState.value.isCancelling = false;
+    }
+  }
+
+  /**
    * キュー内のアイテムをキャンセル
    */
   function cancelQueueItem(id: number) {
@@ -468,6 +531,7 @@ export function useUploadDialog(
     uploadQueue,
     handleMultipleFiles,
     closeUploadDialog,
+    cancelCurrentUpload,
     minimizeUploadDialog,
     restoreUploadDialog,
     cancelQueueItem,
