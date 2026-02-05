@@ -32,8 +32,8 @@ const emit = defineEmits<{
 // アクティブなカテゴリー
 const activeCategory = ref("account");
 
-// カテゴリー定義
-const categories = [
+// カテゴリー定義（言語変更時にリアクティブに更新）
+const categories = computed(() => [
     {
         id: "account",
         label: t("settings.categories.account"),
@@ -69,7 +69,7 @@ const categories = [
         label: t("settings.categories.appinfo"),
         icon: "ℹ️",
     },
-];
+]);
 
 // アクティブなカテゴリーのコンポーネント
 const activeComponent = computed(() => {
@@ -95,7 +95,7 @@ const activeComponent = computed(() => {
 
 // 現在のカテゴリーのラベル
 const activeCategoryLabel = computed(() => {
-    const category = categories.find((c) => c.id === activeCategory.value);
+    const category = categories.value.find((c) => c.id === activeCategory.value);
     return category?.label ?? "";
 });
 

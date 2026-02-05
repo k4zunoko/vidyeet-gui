@@ -4,6 +4,7 @@
  *
  * 言語設定、テーマ、その他表示オプション
  */
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import SettingSection from "../components/SettingSection.vue";
 import SettingItem from "../components/SettingItem.vue";
@@ -14,7 +15,8 @@ import type { SupportedLocale } from "../../../i18n";
 const { t } = useI18n();
 const { currentLanguage, setLanguage } = useLanguage();
 
-const languageOptions = [
+// 言語オプション（言語変更時にリアクティブに更新）
+const languageOptions = computed(() => [
     {
         value: "ja",
         label: t("settings.language.ja"),
@@ -25,7 +27,7 @@ const languageOptions = [
         label: t("settings.language.en"),
         description: t("settings.language.enDesc"),
     },
-];
+]);
 
 function handleLanguageChange(value: string) {
     setLanguage(value as SupportedLocale);
