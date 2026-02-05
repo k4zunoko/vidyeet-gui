@@ -59,28 +59,32 @@ const vidyeetApi: VidyeetApi = {
     return await ipcRenderer.invoke(IpcChannels.SELECT_FILE)
   },
 
-  async upload(
-    request: UploadRequest,
-    onProgress?: (progress: UploadProgress) => void
-  ): Promise<UploadResponse | IpcError> {
-    // 進捗リスナーを登録
-    const progressListener = (_event: Electron.IpcRendererEvent, progress: UploadProgress) => {
-      onProgress?.(progress)
-    }
-    
-    if (onProgress) {
-      ipcRenderer.on('vidyeet:uploadProgress', progressListener)
-    }
+   async upload(
+     request: UploadRequest,
+     onProgress?: (progress: UploadProgress) => void
+   ): Promise<UploadResponse | IpcError> {
+     // 進捗リスナーを登録
+     const progressListener = (_event: Electron.IpcRendererEvent, progress: UploadProgress) => {
+       onProgress?.(progress)
+     }
+     
+     if (onProgress) {
+       ipcRenderer.on('vidyeet:uploadProgress', progressListener)
+     }
 
-    try {
-      return await ipcRenderer.invoke(IpcChannels.UPLOAD, request)
-    } finally {
-      // リスナーをクリーンアップ
-      if (onProgress) {
-        ipcRenderer.off('vidyeet:uploadProgress', progressListener)
-      }
-    }
-  },
+     try {
+       return await ipcRenderer.invoke(IpcChannels.UPLOAD, request)
+     } finally {
+       // リスナーをクリーンアップ
+       if (onProgress) {
+         ipcRenderer.off('vidyeet:uploadProgress', progressListener)
+       }
+     }
+   },
+
+   async cancelUpload(uploadId: string): Promise<{ success: boolean }> {
+     return await ipcRenderer.invoke(IpcChannels.UPLOAD_CANCEL, { uploadId })
+   },
 
   async getTemplates() {
     return await ipcRenderer.invoke(IpcChannels.TEMPLATES_LIST)

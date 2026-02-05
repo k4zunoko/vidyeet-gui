@@ -22,7 +22,8 @@
       "expand": "クリックして展開",
       "waiting": "待機中",
       "items": "件",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "cancelling": "キャンセル中..."
     },
     "toasts": {
       "linkCopied": "リンクをコピーしました"

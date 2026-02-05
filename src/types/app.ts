@@ -56,7 +56,7 @@ export interface ToastItem {
 // =============================================================================
 
 /** アップロードキューアイテムのステータス */
-export type QueueItemStatus = "waiting" | "uploading" | "completed" | "error";
+export type QueueItemStatus = "waiting" | "uploading" | "cancelling" | "completed" | "error";
 
 /** アップロードキューアイテム */
 export interface QueueItem {

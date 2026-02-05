@@ -22,7 +22,8 @@
       "expand": "Click to expand",
       "waiting": "Waiting",
       "items": "items",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "cancelling": "Cancelling..."
     },
     "toasts": {
       "linkCopied": "Link copied"

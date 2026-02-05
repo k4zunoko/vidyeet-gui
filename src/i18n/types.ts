@@ -24,6 +24,7 @@ export interface MessageSchema {
       waiting: string;
       items: string;
       cancel: string;
+      cancelling: string;
     };
     toasts: {
       linkCopied: string;

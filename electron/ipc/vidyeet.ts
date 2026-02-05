@@ -20,6 +20,7 @@ import {
   deleteAsset,
   selectFile,
   upload,
+  cancelUpload,
 } from "../services/vidyeetClient";
 
 export function registerVidyeetHandlers(): void {
@@ -74,5 +75,13 @@ export function registerVidyeetHandlers(): void {
       // 進捗をRendererに送信
       event.sender.send("vidyeet:uploadProgress", progress);
     });
+  });
+
+  /**
+   * vidyeet:upload:cancel - Cancel active upload
+   */
+  ipcMain.handle(IpcChannels.UPLOAD_CANCEL, async (_event, payload: { uploadId: string }) => {
+    const success = cancelUpload(payload.uploadId);
+    return { success };
   });
 }
