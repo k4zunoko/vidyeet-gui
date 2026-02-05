@@ -46,21 +46,21 @@ function setupHlsEventHandlers(hlsInstance: Hls) {
     });
   });
 
-  hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
-    if (data.fatal) {
-      playerState.value = 'error';
-      switch (data.type) {
-        case Hls.ErrorTypes.NETWORK_ERROR:
-          errorMessage.value = 'ネットワークエラーが発生しました。接続を確認してください。';
-          break;
-        case Hls.ErrorTypes.MEDIA_ERROR:
-          errorMessage.value = 'メディアエラーが発生しました。別の動画を試してください。';
-          break;
-        default:
-          errorMessage.value = '再生エラーが発生しました。';
-      }
-    }
-  });
+   hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
+     if (data.fatal) {
+       playerState.value = 'error';
+       switch (data.type) {
+         case Hls.ErrorTypes.NETWORK_ERROR:
+           errorMessage.value = t('player.errors.networkError');
+           break;
+         case Hls.ErrorTypes.MEDIA_ERROR:
+           errorMessage.value = t('player.errors.mediaError');
+           break;
+         default:
+           errorMessage.value = t('player.errors.playbackError');
+       }
+     }
+   });
 }
 
 /**
@@ -108,16 +108,16 @@ function initPlayer(playbackId: string) {
       playerState.value = 'ready';
       videoRef.value?.play().catch(() => {});
     });
-    videoRef.value.addEventListener('error', () => {
-      playerState.value = 'error';
-      errorMessage.value = '再生エラーが発生しました。';
-    });
+     videoRef.value.addEventListener('error', () => {
+       playerState.value = 'error';
+       errorMessage.value = t('player.errors.playbackError');
+     });
   }
-  // HLS非対応
-  else {
-    playerState.value = 'error';
-    errorMessage.value = 'このブラウザはHLS再生に対応していません。';
-  }
+   // HLS非対応
+   else {
+     playerState.value = 'error';
+     errorMessage.value = t('player.errors.hlsNotSupported');
+   }
 }
 
 /**

@@ -32,6 +32,7 @@
   "settings": {
     "title": "Settings",
     "close": "Close",
+    "categoriesAriaLabel": "Settings categories",
     "aria": {
       "close": "Close settings",
       "updateProgress": "Update progress"
@@ -120,9 +121,7 @@
     "language": {
       "label": "Language",
       "ja": "日本語",
-      "jaDesc": "Display in Japanese",
-      "en": "English",
-      "enDesc": "Display in English"
+      "en": "English"
     },
     "update": {
       "checkButton": "Check",
@@ -197,7 +196,13 @@
     "selectVideo": "Please select a video",
     "selectHint": "Click a video from the list on the left",
     "loading": "Loading...",
-    "retry": "Retry"
+    "retry": "Retry",
+    "errors": {
+      "networkError": "A network error occurred. Please check your connection.",
+      "mediaError": "A media error occurred. Please try another video.",
+      "playbackError": "A playback error occurred.",
+      "hlsNotSupported": "This browser does not support HLS playback."
+    }
   },
   "videoCard": {
     "ariaPrefix": "Video:",
@@ -230,7 +235,8 @@
       "emptyName": "Please enter a template name",
       "emptyContent": "Please enter template content",
       "invalidVariable": "Unknown variable: {var}",
-      "duplicateName": "A template with this name already exists"
+      "duplicateName": "A template with this name already exists",
+      "deleteFailed": "Failed to delete template"
     },
     "toast": {
       "copySuccess": "{name} copied to clipboard",
@@ -256,6 +262,7 @@
   "titleBar": {
     "reload": "Reload",
     "settings": "Settings",
+    "minimize": "Minimize",
     "restore": "Restore",
     "maximize": "Maximize",
     "close": "Close"
@@ -280,6 +287,9 @@
   },
   "uploadErrors": {
     "pathError": "Invalid file path",
-    "uploadFailed": "Upload failed"
+    "uploadFailed": "Upload failed",
+    "cancelled": "Cancelled",
+    "cancelSuccess": "Upload cancelled",
+    "cancelFailed": "Failed to cancel upload"
   }
 }
