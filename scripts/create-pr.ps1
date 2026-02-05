@@ -58,3 +58,28 @@ $existing = gh pr list --head $currentBranch --base $BaseBranch --json number,ur
 if ($existing -and $existing.Trim() -ne "null" -and $existing.Trim() -ne "") {
     $existingObj = $existing | ConvertFrom-Json
     Ok "Pull request already exists: #$($existingObj.number)"
+    Ok "URL: $($existingObj.url)"
+    exit 0
+}
+
+# --- Create new PR ---
+Info "Creating PR (head: $currentBranch -> base: $BaseBranch)..."
+
+$prResult = gh pr create --base $BaseBranch --fill --web 2>&1
+$exitCode = $LASTEXITCODE
+
+if ($exitCode -ne 0) {
+    # Check if PR was created despite the exit code (--web might behave differently)
+    if ($prResult -match "https://github\.com/.*/pull/\d+") {
+        Ok "Pull request created: $prResult"
+        exit 0
+    }
+    Fail "Failed to create PR. gh pr create returned exit code $exitCode. Output: $prResult"
+}
+
+# Parse the PR URL from output
+if ($prResult -match "https://github\.com/.*/pull/\d+") {
+    Ok "Pull request created: $prResult"
+} else {
+    Ok "Pull request created successfully"
+}
