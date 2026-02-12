@@ -29,10 +29,10 @@ export function registerWindowHandlers(
   });
 
   /**
-   * window:close - ウィンドウを閉じる
+   * window:close - ウィンドウを閉じる（タスクトレイに格納）
    */
   ipcMain.handle("window:close", () => {
-    getWindow()?.close();
+    getWindow()?.hide();
   });
 
   /**
