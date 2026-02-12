@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, Tray, Menu } from "electron";
 import log from "electron-log/main";
 import {
   autoUpdater,
@@ -51,6 +51,8 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 let win: BrowserWindow | null;
+let tray: Tray | null = null;
+let isQuitting = false;
 
 const BACKGROUND_UPDATE_CHECK_DELAY_MS = 10_000;
 
@@ -226,6 +228,57 @@ function resolveAutoUpdateError(
   };
 }
 
+function createTray(): void {
+  // アイコンパスを解決
+  // 開発時: public/icon.ico (Viteのpublicフォルダ)
+  // 本番時: dist/icon.ico (Viteがpublicをdistにコピー)
+  const appRoot = process.env.APP_ROOT ?? path.join(__dirname, "..");
+  const iconPath = VITE_DEV_SERVER_URL
+    ? path.join(appRoot, "public", "icon.ico")
+    : path.join(RENDERER_DIST, "icon.ico");
+
+  tray = new Tray(iconPath);
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "Vidyeetを表示",
+      click: () => {
+        if (win) {
+          win.show();
+          win.focus();
+        } else {
+          createWindow();
+        }
+      },
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setToolTip("Vidyeet");
+  tray.setContextMenu(contextMenu);
+
+  // トレイアイコンクリックでウィンドウの表示/非表示を切り替え
+  tray.on("click", () => {
+    if (win) {
+      if (win.isVisible()) {
+        win.hide();
+      } else {
+        win.show();
+        win.focus();
+      }
+    } else {
+      createWindow();
+    }
+  });
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1200,
@@ -238,6 +291,14 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
     },
+  });
+
+  // 閉じるボタンが押されたときにタスクトレイに格納
+  win.on("close", (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      win?.hide();
+    }
   });
 
   // Test active push message to Renderer-process.
@@ -258,9 +319,18 @@ function createWindow() {
 // explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    app.quit();
+    // 実際に終了する場合（トレイメニューからQuitが選択された）のみ終了
+    // 通常のウィンドウ閉じる操作ではトレイに格納される
+    if (isQuitting) {
+      app.quit();
+    }
     win = null;
   }
+});
+
+// アプリが実際に終了するときにフラグを設定
+app.on("before-quit", () => {
+  isQuitting = true;
 });
 
 app.on("activate", () => {
@@ -273,6 +343,7 @@ app.on("activate", () => {
 
 app.whenReady().then(() => {
   setupAutoUpdater();
+  createTray();
   createWindow();
   setMainWindow(win);
   setUpdaterState(updaterState);
