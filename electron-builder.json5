@@ -38,7 +38,7 @@
       }
     ],
     "artifactName": "${productName}-${version}-Setup.${ext}",
-    "icon": "build/icon.ico",
+    "icon": "public/icon.ico",
     "publisherName": "vidyeet",
     "verifyUpdateCodeSignature": false
   },
@@ -57,9 +57,9 @@
     "deleteAppDataOnUninstall": false,              // アンインストール時にAppDataを削除しない（CLIの認証情報保持）
 
     // インストーラーの見た目
-    "installerIcon": "build/icon.ico",              // インストーラーアイコン
-    "uninstallerIcon": "build/icon.ico",            // アンインストーラーアイコン
-    "installerHeaderIcon": "build/icon.ico",        // ヘッダーアイコン
+    "installerIcon": "public/icon.ico",              // インストーラーアイコン
+    "uninstallerIcon": "public/icon.ico",            // アンインストーラーアイコン
+    "installerHeaderIcon": "public/icon.ico",        // ヘッダーアイコン
 
     // 言語設定
     "language": "1041",                             // 日本語（1041）または英語（1033）

@@ -230,8 +230,12 @@ function resolveAutoUpdateError(
 
 function createTray(): void {
   // アイコンパスを解決
-  const appRoot = process.env.APP_ROOT ?? process.cwd();
-  const iconPath = path.join(appRoot, "build", "icon.ico");
+  // 開発時: public/icon.ico (Viteのpublicフォルダ)
+  // 本番時: dist/icon.ico (Viteがpublicをdistにコピー)
+  const appRoot = process.env.APP_ROOT ?? path.join(__dirname, "..");
+  const iconPath = VITE_DEV_SERVER_URL
+    ? path.join(appRoot, "public", "icon.ico")
+    : path.join(RENDERER_DIST, "icon.ico");
 
   tray = new Tray(iconPath);
 
