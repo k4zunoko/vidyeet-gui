@@ -25,6 +25,15 @@ import {
   setUpdaterState,
 } from "./ipc/updater";
 
+// 多重起動防止: シングルインスタンスロックを取得
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  // ロックが取れない場合は2個目以降のインスタンスなので即終了
+  app.quit();
+  process.exit(0);
+}
+
 // アプリケーション名を設定（electron-log/electron-updaterの初期化前に設定）
 app.name = "Vidyeet";
 
@@ -338,6 +347,17 @@ app.on("activate", () => {
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+  }
+});
+
+// 2個目以降のインスタンス起動時に既存ウィンドウを前面に表示
+app.on("second-instance", () => {
+  if (win) {
+    if (win.isMinimized()) {
+      win.restore();
+    }
+    win.show();
+    win.focus();
   }
 });
 
