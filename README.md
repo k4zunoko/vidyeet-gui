@@ -10,7 +10,7 @@ DiscordやX(Twitter)など、容量制限のあるSNSで動画を共有する際
 
 ### 1. インストーラーをダウンロード
 
-1. **[「Releases」](../../releases)** をクリック
+1. **[「Releases」](../../releases/latest)** をクリック
 2. 最新のバージョンを選択
 3. `Vidyeet-x.x.x-Setup.exe` をダウンロード
 
