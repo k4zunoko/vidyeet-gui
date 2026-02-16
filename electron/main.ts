@@ -360,6 +360,10 @@ app.on("second-instance", () => {
     }
     win.show();
     win.focus();
+  } else {
+    // App was started in tray-only mode (--hidden)
+    // Create window when user launches from shortcut
+    createWindow();
   }
 });
 
