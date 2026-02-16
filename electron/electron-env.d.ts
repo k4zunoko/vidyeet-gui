@@ -6,6 +6,7 @@ import type {
   ClipboardApi,
   AppApi,
   UpdaterApi,
+  AutoLaunchApi,
 } from './types/ipc'
 
 declare namespace NodeJS {
@@ -42,4 +43,6 @@ interface Window {
   app: AppApi
   /** アップデート API */
   updater: UpdaterApi
+  /** 自動起動 API */
+  autoLaunch: AutoLaunchApi
 }

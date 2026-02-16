@@ -24,6 +24,9 @@ import {
   type SaveTemplateRequest,
   type DeleteTemplateRequest,
   type ApplyTemplateRequest,
+  type AutoLaunchApi,
+  type AutoLaunchGetResponse,
+  type AutoLaunchSetRequest,
 } from './types/ipc'
 
 // =============================================================================
@@ -219,6 +222,25 @@ const updaterApi: UpdaterApi = {
 }
 
 contextBridge.exposeInMainWorld('updater', updaterApi)
+
+// =============================================================================
+// Auto Launch API
+// =============================================================================
+
+/**
+ * 自動起動API - window.autoLaunch として公開
+ */
+const autoLaunchApi: AutoLaunchApi = {
+  async getState(): Promise<AutoLaunchGetResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.AUTO_LAUNCH_GET)
+  },
+
+  async setState(request: AutoLaunchSetRequest): Promise<{ success: true } | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.AUTO_LAUNCH_SET, request)
+  },
+}
+
+contextBridge.exposeInMainWorld('autoLaunch', autoLaunchApi)
 
 // =============================================================================
 // Legacy ipcRenderer API (for backward compatibility)

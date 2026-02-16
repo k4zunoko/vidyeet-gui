@@ -24,6 +24,8 @@ import {
   setMainWindow,
   setUpdaterState,
 } from "./ipc/updater";
+import { registerAutoLaunchHandlers } from "./ipc/autoLaunch";
+import autoLaunchManager from "./services/autoLaunchManager";
 
 // 多重起動防止: シングルインスタンスロックを取得
 const gotTheLock = app.requestSingleInstanceLock();
@@ -361,10 +363,42 @@ app.on("second-instance", () => {
   }
 });
 
+// Detect if app was auto-started (launched with --hidden flag)
+const isAutoStarted = autoLaunchManager.isAutoStarted();
+
 app.whenReady().then(() => {
+  // Enable auto-launch by default for new users
+  if (!autoLaunchManager.hasShownFirstRunNotification()) {
+    autoLaunchManager.enable();
+    autoLaunchManager.setFirstRunNotificationShown();
+  }
+
   setupAutoUpdater();
   createTray();
-  createWindow();
+
+  // Show first-run notification if auto-started and not shown before
+  if (
+    isAutoStarted &&
+    !autoLaunchManager.hasShownFirstRunNotification()
+  ) {
+    try {
+      tray?.displayBalloon({
+        iconType: "info",
+        title: "Vidyeet",
+        content:
+          "Vidyeetがバックグラウンドで実行中です。トレイアイコンをクリックして開くことができます。",
+      });
+      autoLaunchManager.setFirstRunNotificationShown();
+    } catch (error) {
+      log.error("[AutoLaunch] Failed to show first-run notification:", error);
+    }
+  }
+  
+  // Only create window if not auto-started (tray-only mode)
+  if (!isAutoStarted) {
+    createWindow();
+  }
+  
   setMainWindow(win);
   setUpdaterState(updaterState);
   scheduleBackgroundUpdateCheck();
@@ -382,5 +416,6 @@ app.whenReady().then(() => {
     clearBackgroundUpdateCheckTimer,
     runUpdateCheck,
   );
+  registerAutoLaunchHandlers();
 });
 

@@ -22,7 +22,8 @@ export type IpcErrorCode =
   | "AUTO_UPDATE_ERROR"
   | "UNKNOWN_ERROR"
   | "TEMPLATE_NOT_FOUND"
-  | "TEMPLATE_ERROR";
+  | "TEMPLATE_ERROR"
+  | "AUTO_LAUNCH_ERROR";
 
 /** IPC統一エラー応答 */
 export interface IpcError {
@@ -233,6 +234,28 @@ export interface ApplyTemplateResponse {
 }
 
 // =============================================================================
+// Auto Launch Types
+// =============================================================================
+
+/** autoLaunch:get request (void) */
+export type AutoLaunchGetRequest = void;
+
+/** autoLaunch:get response */
+export interface AutoLaunchGetResponse {
+  enabled: boolean;
+}
+
+/** autoLaunch:set request */
+export interface AutoLaunchSetRequest {
+  enabled: boolean;
+}
+
+/** autoLaunch:set response */
+export interface AutoLaunchSetResponse {
+  success: true;
+}
+
+// =============================================================================
 // IPC Channels
 // =============================================================================
 
@@ -257,6 +280,8 @@ export const IpcChannels = {
   TEMPLATES_SAVE: "templates:save",
   TEMPLATES_DELETE: "templates:delete",
   TEMPLATES_APPLY: "templates:apply",
+  AUTO_LAUNCH_GET: "autoLaunch:get",
+  AUTO_LAUNCH_SET: "autoLaunch:set",
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
@@ -324,4 +349,10 @@ export interface UpdaterApi {
 /** シェルAPI */
 export interface ShellApi {
   openExternal(url: string): Promise<void>;
+}
+
+/** Auto Launch API */
+export interface AutoLaunchApi {
+  getState(): Promise<AutoLaunchGetResponse | IpcError>;
+  setState(request: AutoLaunchSetRequest): Promise<AutoLaunchSetResponse | IpcError>;
 }

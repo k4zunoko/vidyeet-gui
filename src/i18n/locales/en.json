@@ -81,11 +81,15 @@
     "display": {
       "section": {
         "language": "Language Settings",
-        "languageDesc": "Interface display language"
+        "languageDesc": "Interface display language",
+        "autoLaunch": "Auto-launch Settings"
       },
       "language": {
         "label": "Display Language",
         "description": "Select app display language"
+      },
+      "autoLaunch": {
+        "label": "Auto-launch on PC startup"
       }
     },
     "data": {
@@ -291,5 +295,12 @@
     "cancelled": "Cancelled",
     "cancelSuccess": "Upload cancelled",
     "cancelFailed": "Failed to cancel upload"
+  },
+  "autoLaunchErrors": {
+    "setFailed": "Failed to apply auto-launch settings",
+    "loadFailed": "Failed to load auto-launch settings",
+    "enableFailed": "Could not enable auto-launch",
+    "disableFailed": "Could not disable auto-launch",
+    "tryAgain": "Please try again"
   }
 }

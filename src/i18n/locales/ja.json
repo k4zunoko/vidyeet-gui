@@ -81,11 +81,15 @@
     "display": {
       "section": {
         "language": "言語設定",
-        "languageDesc": "インターフェースの表示言語"
+        "languageDesc": "インターフェースの表示言語",
+        "autoLaunch": "自動起動設定"
       },
       "language": {
         "label": "表示言語",
         "description": "アプリの表示言語を選択"
+      },
+      "autoLaunch": {
+        "label": "PCの起動時に自動起動"
       }
     },
     "data": {
@@ -291,5 +295,12 @@
     "cancelled": "キャンセルされました",
     "cancelSuccess": "アップロードをキャンセルしました",
     "cancelFailed": "キャンセルに失敗しました"
+  },
+  "autoLaunchErrors": {
+    "setFailed": "自動起動の設定に失敗しました",
+    "loadFailed": "自動起動の状態取得に失敗しました",
+    "enableFailed": "自動起動を有効にできませんでした",
+    "disableFailed": "自動起動を無効にできませんでした",
+    "tryAgain": "もう一度試してください"
   }
 }
