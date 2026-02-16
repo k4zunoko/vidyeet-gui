@@ -5,7 +5,7 @@ import log from 'electron-log/main';
 interface AutoLaunchStore {
   autoLaunch: {
     enabled: boolean;
-    hasShownFirstRunNotification: boolean;
+    hasConfigured: boolean;
   };
 }
 
@@ -22,7 +22,7 @@ class AutoLaunchManager {
   private readonly DEFAULT_STATE = {
     autoLaunch: {
       enabled: true, // Default: enabled on first install
-      hasShownFirstRunNotification: false,
+      hasConfigured: false,
     },
   };
 
@@ -111,30 +111,30 @@ class AutoLaunchManager {
   }
 
   /**
-   * Check if first-run notification has been shown to user
-   * @returns true if notification was already shown
+   * Check if auto-launch has been configured (first-run setup completed)
+   * @returns true if configured (not first run)
    */
-  hasShownFirstRunNotification(): boolean {
+  hasConfigured(): boolean {
     try {
-      const shown = this.store.get(`${this.STORE_KEY}.hasShownFirstRunNotification`);
-      return shown ?? false;
+      const configured = this.store.get(`${this.STORE_KEY}.hasConfigured`);
+      return configured ?? false;
     } catch (error) {
-      log.error('[AutoLaunch] Failed to check first-run notification status:', error);
+      log.error('[AutoLaunch] Failed to check configured status:', error);
       return false;
     }
   }
 
   /**
-   * Mark first-run notification as shown
+   * Mark auto-launch as configured (first-run setup completed)
    * @returns true if set successfully
    */
-  setFirstRunNotificationShown(): boolean {
+  markConfigured(): boolean {
     try {
-      this.store.set(`${this.STORE_KEY}.hasShownFirstRunNotification`, true);
-      log.info('[AutoLaunch] First-run notification marked as shown');
+      this.store.set(`${this.STORE_KEY}.hasConfigured`, true);
+      log.info('[AutoLaunch] Auto-launch marked as configured');
       return true;
     } catch (error) {
-      log.error('[AutoLaunch] Failed to set first-run notification shown:', error);
+      log.error('[AutoLaunch] Failed to mark auto-launch as configured:', error);
       return false;
     }
   }
@@ -165,7 +165,8 @@ class AutoLaunchManager {
    */
   reset(): boolean {
     try {
-      this.store.set(this.STORE_KEY, this.DEFAULT_STATE.autoLaunch);
+      this.store.set(`${this.STORE_KEY}.enabled`, this.DEFAULT_STATE.autoLaunch.enabled);
+      this.store.set(`${this.STORE_KEY}.hasConfigured`, this.DEFAULT_STATE.autoLaunch.hasConfigured);
       this.disable(); // Also disable in Windows
       log.info('[AutoLaunch] Settings reset to defaults');
       return true;

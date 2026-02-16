@@ -372,32 +372,14 @@ const isAutoStarted = autoLaunchManager.isAutoStarted();
 
 app.whenReady().then(() => {
   // Enable auto-launch by default for new users
-  if (!autoLaunchManager.hasShownFirstRunNotification()) {
+  if (!autoLaunchManager.hasConfigured()) {
     autoLaunchManager.enable();
-    autoLaunchManager.setFirstRunNotificationShown();
+    autoLaunchManager.markConfigured();
   }
 
   setupAutoUpdater();
   createTray();
 
-  // Show first-run notification if auto-started and not shown before
-  if (
-    isAutoStarted &&
-    !autoLaunchManager.hasShownFirstRunNotification()
-  ) {
-    try {
-      tray?.displayBalloon({
-        iconType: "info",
-        title: "Vidyeet",
-        content:
-          "Vidyeetがバックグラウンドで実行中です。トレイアイコンをクリックして開くことができます。",
-      });
-      autoLaunchManager.setFirstRunNotificationShown();
-    } catch (error) {
-      log.error("[AutoLaunch] Failed to show first-run notification:", error);
-    }
-  }
-  
   // Only create window if not auto-started (tray-only mode)
   if (!isAutoStarted) {
     createWindow();
