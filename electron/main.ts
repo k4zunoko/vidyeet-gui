@@ -24,6 +24,8 @@ import {
   setMainWindow,
   setUpdaterState,
 } from "./ipc/updater";
+import { registerAutoLaunchHandlers } from "./ipc/autoLaunch";
+import autoLaunchManager from "./services/autoLaunchManager";
 
 // 多重起動防止: シングルインスタンスロックを取得
 const gotTheLock = app.requestSingleInstanceLock();
@@ -358,13 +360,31 @@ app.on("second-instance", () => {
     }
     win.show();
     win.focus();
+  } else {
+    // App was started in tray-only mode (--hidden)
+    // Create window when user launches from shortcut
+    createWindow();
   }
 });
 
+// Detect if app was auto-started (launched with --hidden flag)
+const isAutoStarted = autoLaunchManager.isAutoStarted();
+
 app.whenReady().then(() => {
+  // Enable auto-launch by default for new users
+  if (!autoLaunchManager.hasConfigured()) {
+    autoLaunchManager.enable();
+    autoLaunchManager.markConfigured();
+  }
+
   setupAutoUpdater();
   createTray();
-  createWindow();
+
+  // Only create window if not auto-started (tray-only mode)
+  if (!isAutoStarted) {
+    createWindow();
+  }
+  
   setMainWindow(win);
   setUpdaterState(updaterState);
   scheduleBackgroundUpdateCheck();
@@ -382,5 +402,6 @@ app.whenReady().then(() => {
     clearBackgroundUpdateCheckTimer,
     runUpdateCheck,
   );
+  registerAutoLaunchHandlers();
 });
 
