@@ -393,7 +393,15 @@ const isAutoStarted = autoLaunchManager.isAutoStarted();
 
 app.whenReady().then(() => {
   // Check for pending update FIRST (before any UI initialization)
-  const updateState = updateStore.get("updateState") as UpdateState | undefined;
+  let updateState: UpdateState | undefined;
+  try {
+    updateState = updateStore.get("updateState") as UpdateState | undefined;
+  } catch (error) {
+    log.warn("[AutoUpdate] Failed to read update state from store, continuing normal startup:", error);
+    continueStartup();
+    return;
+  }
+
   if (updateState?.hasPendingUpdate) {
     log.info("[AutoUpdate] Pending update detected on startup:", updateState.version);
     
