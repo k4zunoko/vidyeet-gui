@@ -26,6 +26,22 @@ import {
 } from "./ipc/updater";
 import { registerAutoLaunchHandlers } from "./ipc/autoLaunch";
 import autoLaunchManager from "./services/autoLaunchManager";
+import Store from "electron-store";
+
+// Type definition for update state persistence
+interface UpdateState {
+  hasPendingUpdate: boolean;
+  version?: string;
+  downloadedAt?: number;
+}
+
+// Create store instance at module level (outside app.whenReady())
+export const updateStore = new Store<UpdateState>({
+  name: "update-state",
+  defaults: {
+    hasPendingUpdate: false,
+  },
+});
 
 // 多重起動防止: シングルインスタンスロックを取得
 const gotTheLock = app.requestSingleInstanceLock();
