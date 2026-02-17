@@ -333,6 +333,11 @@ function createWindow() {
     }
   });
 
+  // ウィンドウが非表示になったときにレンダラープロセスに通知
+  win.on("hide", () => {
+    win?.webContents.send(IpcChannels.APP_WINDOW_HIDDEN);
+  });
+
   // Test active push message to Renderer-process.
   win.webContents.on("did-finish-load", () => {
     win?.webContents.send("main-process-message", new Date().toLocaleString());
