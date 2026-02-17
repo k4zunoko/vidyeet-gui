@@ -12,6 +12,7 @@ import {
   type IpcError,
   type UpdateStatusPayload,
 } from "../types/ipc";
+import { updateStore } from "../main";
 
 // State object (will be set by main.ts)
 interface UpdaterState {
@@ -209,6 +210,9 @@ export function registerUpdaterHandlers(
     if (!app.isPackaged) {
       return buildAutoUpdateDisabledError();
     }
+
+    // Clear the pending flag to prevent duplicate install on next startup
+    updateStore.set("updateState", { hasPendingUpdate: false });
 
     autoUpdater.quitAndInstall(true, true);
     return { success: true };

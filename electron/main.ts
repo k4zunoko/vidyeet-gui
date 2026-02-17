@@ -26,6 +26,22 @@ import {
 } from "./ipc/updater";
 import { registerAutoLaunchHandlers } from "./ipc/autoLaunch";
 import autoLaunchManager from "./services/autoLaunchManager";
+import Store from "electron-store";
+
+// Type definition for update state persistence
+interface UpdateState {
+  hasPendingUpdate: boolean;
+  version?: string;
+  downloadedAt?: number;
+}
+
+// Create store instance at module level (outside app.whenReady())
+export const updateStore = new Store<UpdateState>({
+  name: "update-state",
+  defaults: {
+    hasPendingUpdate: false,
+  },
+});
 
 // 多重起動防止: シングルインスタンスロックを取得
 const gotTheLock = app.requestSingleInstanceLock();
@@ -185,6 +201,11 @@ function setupAutoUpdater() {
     updaterState.currentDownloadTrigger = null;
     updaterState.lastDownloadProgress = null;
     sendUpdateStatus({ status: "update-downloaded", info });
+    updateStore.set("updateState", {
+      hasPendingUpdate: true,
+      version: info.version,
+      downloadedAt: Date.now(),
+    });
   });
 
   autoUpdater.on("error", (error: unknown) => {
@@ -371,6 +392,46 @@ app.on("second-instance", () => {
 const isAutoStarted = autoLaunchManager.isAutoStarted();
 
 app.whenReady().then(() => {
+  // Check for pending update FIRST (before any UI initialization)
+  let updateState: UpdateState | undefined;
+  try {
+    updateState = updateStore.get("updateState") as UpdateState | undefined;
+  } catch (error) {
+    log.warn("[AutoUpdate] Failed to read update state from store, continuing normal startup:", error);
+    continueStartup();
+    return;
+  }
+
+  if (updateState?.hasPendingUpdate) {
+    log.info("[AutoUpdate] Pending update detected on startup:", updateState.version);
+    
+    // Clear flag BEFORE attempting install (prevents infinite loop on failure)
+    updateStore.set("updateState", { hasPendingUpdate: false });
+    
+    // Set timeout in case install hangs
+    const installTimeout = setTimeout(() => {
+      log.error("[AutoUpdate] Install timeout, proceeding with normal startup");
+      continueStartup();
+    }, 5000);
+    
+    try {
+      autoUpdater.quitAndInstall(true, true);
+      // If we reach here, install didn't quit (shouldn't happen)
+      clearTimeout(installTimeout);
+      log.warn("[AutoUpdate] quitAndInstall did not quit app, continuing startup");
+      continueStartup();
+    } catch (error) {
+      log.error("[AutoUpdate] Failed to install pending update:", error);
+      clearTimeout(installTimeout);
+      continueStartup();
+    }
+    return; // Exit early - app will restart if install succeeds
+  }
+  
+  continueStartup();
+});
+
+function continueStartup(): void {
   // Enable auto-launch by default for new users
   if (!autoLaunchManager.hasConfigured()) {
     autoLaunchManager.enable();
@@ -403,5 +464,5 @@ app.whenReady().then(() => {
     runUpdateCheck,
   );
   registerAutoLaunchHandlers();
-});
+}
 
