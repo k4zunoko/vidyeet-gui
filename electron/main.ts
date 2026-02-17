@@ -392,6 +392,38 @@ app.on("second-instance", () => {
 const isAutoStarted = autoLaunchManager.isAutoStarted();
 
 app.whenReady().then(() => {
+  // Check for pending update FIRST (before any UI initialization)
+  const updateState = updateStore.get("updateState") as UpdateState | undefined;
+  if (updateState?.hasPendingUpdate) {
+    log.info("[AutoUpdate] Pending update detected on startup:", updateState.version);
+    
+    // Clear flag BEFORE attempting install (prevents infinite loop on failure)
+    updateStore.set("updateState", { hasPendingUpdate: false });
+    
+    // Set timeout in case install hangs
+    const installTimeout = setTimeout(() => {
+      log.error("[AutoUpdate] Install timeout, proceeding with normal startup");
+      continueStartup();
+    }, 5000);
+    
+    try {
+      autoUpdater.quitAndInstall(true, true);
+      // If we reach here, install didn't quit (shouldn't happen)
+      clearTimeout(installTimeout);
+      log.warn("[AutoUpdate] quitAndInstall did not quit app, continuing startup");
+      continueStartup();
+    } catch (error) {
+      log.error("[AutoUpdate] Failed to install pending update:", error);
+      clearTimeout(installTimeout);
+      continueStartup();
+    }
+    return; // Exit early - app will restart if install succeeds
+  }
+  
+  continueStartup();
+});
+
+function continueStartup(): void {
   // Enable auto-launch by default for new users
   if (!autoLaunchManager.hasConfigured()) {
     autoLaunchManager.enable();
@@ -424,5 +456,5 @@ app.whenReady().then(() => {
     runUpdateCheck,
   );
   registerAutoLaunchHandlers();
-});
+}
 
