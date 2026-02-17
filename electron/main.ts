@@ -201,6 +201,11 @@ function setupAutoUpdater() {
     updaterState.currentDownloadTrigger = null;
     updaterState.lastDownloadProgress = null;
     sendUpdateStatus({ status: "update-downloaded", info });
+    updateStore.set("updateState", {
+      hasPendingUpdate: true,
+      version: info.version,
+      downloadedAt: Date.now(),
+    });
   });
 
   autoUpdater.on("error", (error: unknown) => {
