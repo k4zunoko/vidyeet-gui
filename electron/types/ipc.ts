@@ -173,6 +173,8 @@ export interface UpdateStatusPayload {
   error?: string;
 }
 
+export type AppWindowHiddenPayload = Record<string, never>;
+
 export interface UpdateActionResponse {
   success: true;
 }
@@ -282,6 +284,7 @@ export const IpcChannels = {
   TEMPLATES_APPLY: "templates:apply",
   AUTO_LAUNCH_GET: "autoLaunch:get",
   AUTO_LAUNCH_SET: "autoLaunch:set",
+  APP_WINDOW_HIDDEN: "app:windowHidden",
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
@@ -336,6 +339,7 @@ export interface AppInfo {
 /** アプリケーション情報API */
 export interface AppApi {
   getVersion(): Promise<AppInfo>;
+  onWindowHidden(callback: () => void): () => void;
 }
 
 /** アップデーターAPI */

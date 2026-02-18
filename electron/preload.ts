@@ -181,6 +181,12 @@ const appApi: AppApi = {
   async getVersion() {
     return await ipcRenderer.invoke('app:getVersion')
   },
+  onWindowHidden(callback: () => void): () => void {
+    ipcRenderer.on(IpcChannels.APP_WINDOW_HIDDEN, callback)
+    return () => {
+      ipcRenderer.off(IpcChannels.APP_WINDOW_HIDDEN, callback)
+    }
+  },
 }
 
 contextBridge.exposeInMainWorld('app', appApi)

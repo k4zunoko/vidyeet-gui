@@ -41,6 +41,9 @@ const isSettingsOpen = ref(false);
 // LibraryViewへの参照（reload用）
 const libraryRef = ref<InstanceType<typeof LibraryView> | null>(null);
 
+// ウィンドウ最小化時のリスナークリーンアップ関数
+const unsubscribeWindowHidden = ref<(() => void) | null>(null);
+
 // i18n
 const { t } = useI18n();
 
@@ -102,6 +105,36 @@ const deleteDialog = useDeleteDialog({
 });
 
 
+
+/**
+ * キーボード入力ハンドラー
+ * ESC キーで動画選択を解除
+ */
+function handleKeydown(event: KeyboardEvent) {
+  // Escape キー以外は無視
+  if (event.key !== 'Escape') return;
+
+  // 入力フィールドではの入力を無視
+  if (
+    event.target instanceof HTMLInputElement ||
+    event.target instanceof HTMLTextAreaElement
+  ) {
+    return;
+  }
+
+  // 設定モーダルが開いている場合は無視
+  if (isSettingsOpen.value) {
+    return;
+  }
+
+  // 動画が選択されていない場合は無視
+  if (selectedVideo.value === null) {
+    return;
+  }
+
+  // 選択を解除
+  selectedVideo.value = null;
+}
 
 /**
  * 認証状態をチェック
@@ -230,12 +263,24 @@ function handleDeleteRequest(video: VideoItem) {
  * マウント時の初期化
  * - 認証チェック
  * - グローバルドラッグアンドドロップイベントの登録
+ * - ESC キーリスナーの登録
+ * - ウィンドウ最小化イベントの登録
  */
 onMounted(() => {
     checkAuth();
 
     // グローバルドラッグアンドドロップイベントを登録
     dragDrop.setupGlobalListeners();
+
+    // ESC キーハンドラを登録
+    window.addEventListener('keydown', handleKeydown);
+
+    // ウィンドウ最小化イベントハンドラを登録
+    unsubscribeWindowHidden.value = window.app?.onWindowHidden?.(() => {
+      if (selectedVideo.value !== null) {
+        selectedVideo.value = null;
+      }
+    }) ?? null;
 });
 
 /**
@@ -244,6 +289,12 @@ onMounted(() => {
 onBeforeUnmount(() => {
     // イベントリスナーを削除
     dragDrop.cleanupGlobalListeners();
+
+    // ESC キーハンドラを削除
+    window.removeEventListener('keydown', handleKeydown);
+
+    // ウィンドウ最小化イベントハンドラを削除
+    unsubscribeWindowHidden.value?.();
 });
 </script>
 
