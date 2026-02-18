@@ -26,7 +26,8 @@
       "cancelling": "キャンセル中..."
     },
     "toasts": {
-      "linkCopied": "リンクをコピーしました"
+      "linkCopied": "リンクをコピーしました",
+      "updated": "v{version} にアップデートしました"
     }
   },
   "settings": {

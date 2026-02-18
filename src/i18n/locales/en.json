@@ -26,7 +26,8 @@
       "cancelling": "Cancelling..."
     },
     "toasts": {
-      "linkCopied": "Link copied"
+      "linkCopied": "Link copied",
+      "updated": "Updated to v{version}"
     }
   },
   "settings": {
