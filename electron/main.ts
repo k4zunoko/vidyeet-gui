@@ -443,6 +443,20 @@ function continueStartup(): void {
     autoLaunchManager.markConfigured();
   }
 
+  // Version comparison for update notification
+  try {
+    const currentVersion = app.getVersion();
+    const lastLaunchedVersion = updateStore.get('lastLaunchedVersion') as string | undefined;
+    
+    if (lastLaunchedVersion && lastLaunchedVersion !== currentVersion) {
+      updateStore.set('shouldShowUpdateToast', true);
+    }
+    
+    updateStore.set('lastLaunchedVersion', currentVersion);
+  } catch (error) {
+    log.error('[Startup] Failed to check version update:', error);
+  }
+
   setupAutoUpdater();
   createTray();
 

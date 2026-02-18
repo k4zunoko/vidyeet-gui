@@ -181,6 +181,12 @@ const appApi: AppApi = {
   async getVersion() {
     return await ipcRenderer.invoke('app:getVersion')
   },
+  async getUpdateStatus() {
+    return await ipcRenderer.invoke(IpcChannels.APP_GET_UPDATE_STATUS)
+  },
+  async clearUpdateToast() {
+    return await ipcRenderer.invoke(IpcChannels.APP_CLEAR_UPDATE_TOAST)
+  },
   onWindowHidden(callback: () => void): () => void {
     ipcRenderer.on(IpcChannels.APP_WINDOW_HIDDEN, callback)
     return () => {

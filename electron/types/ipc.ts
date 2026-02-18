@@ -179,6 +179,16 @@ export interface UpdateActionResponse {
   success: true;
 }
 
+/** app:getUpdateStatus 応答 */
+export interface UpdateStatusResponse {
+  shouldShowUpdateToast: boolean;
+}
+
+/** app:clearUpdateToast 応答 */
+export interface ClearUpdateToastResponse {
+  success: true;
+}
+
 // =============================================================================
 // Template Types
 // =============================================================================
@@ -285,6 +295,8 @@ export const IpcChannels = {
   AUTO_LAUNCH_GET: "autoLaunch:get",
   AUTO_LAUNCH_SET: "autoLaunch:set",
   APP_WINDOW_HIDDEN: "app:windowHidden",
+  APP_GET_UPDATE_STATUS: "app:getUpdateStatus",
+  APP_CLEAR_UPDATE_TOAST: "app:clearUpdateToast",
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
@@ -339,6 +351,8 @@ export interface AppInfo {
 /** アプリケーション情報API */
 export interface AppApi {
   getVersion(): Promise<AppInfo>;
+  getUpdateStatus(): Promise<UpdateStatusResponse>;
+  clearUpdateToast(): Promise<ClearUpdateToastResponse>;
   onWindowHidden(callback: () => void): () => void;
 }
 

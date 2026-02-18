@@ -155,6 +155,8 @@ async function checkAuth() {
 
         if (result.isAuthenticated) {
             currentScreen.value = "library";
+            // 認証成功後にアップデート通知をチェック
+            await showUpdateToastIfNeeded();
         } else {
             currentScreen.value = "login";
         }
@@ -162,6 +164,33 @@ async function checkAuth() {
          initError.value = t('app.initializationError');
          currentScreen.value = "login";
      }
+}
+
+/**
+ * アップデート通知を表示（必要な場合のみ）
+ */
+async function showUpdateToastIfNeeded() {
+  // 開発モードでは通知を表示しない
+  if (import.meta.env.DEV) {
+    return;
+  }
+
+  try {
+    const status = await window.app.getUpdateStatus();
+
+    if (!status.shouldShowUpdateToast) {
+      return;
+    }
+
+    const appInfo = await window.app.getVersion();
+    showToast("info", t('app.toasts.updated', { version: appInfo.version }));
+
+    // フラグをクリア
+    await window.app.clearUpdateToast();
+  } catch (error) {
+    // エラー時は通知を表示しない（ログのみ）
+    console.error('[App] Failed to show update toast:', error);
+  }
 }
 
 /**
