@@ -54,6 +54,9 @@ export interface UseCopyTemplates {
  * @returns テンプレート管理の状態と操作メソッド
  */
 export function useCopyTemplates(): UseCopyTemplates {
+  // i18n関数の取得
+  const { t } = useI18n();
+
   // テンプレート一覧
   const templates = ref<CopyTemplate[]>([]);
 
@@ -202,7 +205,6 @@ export function useCopyTemplates(): UseCopyTemplates {
     * @returns 成功したかどうか
     */
    async function deleteTemplate(id: string): Promise<boolean> {
-     const { t } = useI18n();
      error.value = null;
 
      try {
