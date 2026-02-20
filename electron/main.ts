@@ -396,8 +396,11 @@ app.on("second-instance", () => {
 // Detect if app was auto-started (launched with --hidden flag)
 const isAutoStarted = autoLaunchManager.isAutoStarted();
 
-app.whenReady().then(() => {
-  // Check for pending update FIRST (before any UI initialization)
+app.whenReady().then(async () => {
+  // Register event handlers FIRST (required for checkForUpdates to work)
+  setupAutoUpdater();
+  
+  // Check for pending update AFTER handlers are registered
   let updateState: UpdateState | undefined;
   try {
     updateState = updateStore.get("updateState") as UpdateState | undefined;
@@ -409,28 +412,59 @@ app.whenReady().then(() => {
 
   if (updateState?.hasPendingUpdate) {
     log.info("[AutoUpdate] Pending update detected on startup:", updateState.version);
+    log.info("[AutoUpdate] Calling checkForUpdates to load cached update...");
     
-    // Clear flag BEFORE attempting install (prevents infinite loop on failure)
-    updateStore.set("updateState", { hasPendingUpdate: false });
+    let cacheLoaded = false;
     
-    // Set timeout in case install hangs
+    // Listen for update-downloaded event (cache hit)
+    const cacheLoadHandler = () => {
+      cacheLoaded = true;
+      log.info("[AutoUpdate] Cached update loaded successfully");
+    };
+    autoUpdater.once("update-downloaded", cacheLoadHandler);
+    
+    // Set timeout - 30 seconds for network-dependent checkForUpdates
     const installTimeout = setTimeout(() => {
-      log.error("[AutoUpdate] Install timeout, proceeding with normal startup");
-      continueStartup();
-    }, 5000);
+      autoUpdater.off("update-downloaded", cacheLoadHandler);
+      if (!cacheLoaded) {
+        log.error("[AutoUpdate] Timeout loading cached update, flag preserved for retry");
+        continueStartup();
+      }
+    }, 30000);
     
     try {
-      autoUpdater.quitAndInstall(true, true);
-      // If we reach here, install didn't quit (shouldn't happen)
+      await autoUpdater.checkForUpdates();
+      
+      // Wait a tick for event handler to fire
+      await new Promise(resolve => setImmediate(resolve));
+      
+      if (!cacheLoaded) {
+        clearTimeout(installTimeout);
+        log.error("[AutoUpdate] checkForUpdates did not load cached update, flag preserved");
+        continueStartup();
+        return;
+      }
+      
       clearTimeout(installTimeout);
-      log.warn("[AutoUpdate] quitAndInstall did not quit app, continuing startup");
-      continueStartup();
+      log.info("[AutoUpdate] Dispatching update install...");
+      
+      try {
+        autoUpdater.quitAndInstall(true, true);
+        log.info("[AutoUpdate] Update install dispatched successfully");
+        updateStore.set("updateState", { hasPendingUpdate: false });
+        // App will restart - this code won't execute
+      } catch (installError) {
+        log.error("[AutoUpdate] Install failed (quitAndInstall threw error), flag preserved for retry:", installError);
+        continueStartup();
+      }
     } catch (error) {
-      log.error("[AutoUpdate] Failed to install pending update:", error);
       clearTimeout(installTimeout);
+      autoUpdater.off("update-downloaded", cacheLoadHandler);
+      log.error("[AutoUpdate] Failed to load/install cached update:", error);
+      log.info("[AutoUpdate] Flag preserved for next startup retry");
       continueStartup();
     }
-    return; // Exit early - app will restart if install succeeds
+    return;
   }
   
   continueStartup();
@@ -457,7 +491,6 @@ function continueStartup(): void {
     log.error('[Startup] Failed to check version update:', error);
   }
 
-  setupAutoUpdater();
   createTray();
 
   // Only create window if not auto-started (tray-only mode)
