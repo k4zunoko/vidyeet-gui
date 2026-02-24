@@ -32,7 +32,6 @@ declare namespace NodeJS {
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
-  ipcRenderer: import('electron').IpcRenderer
   /** Vidyeet 高水準 API */
   vidyeet: VidyeetApi
   /** ウィンドウ操作 API */
