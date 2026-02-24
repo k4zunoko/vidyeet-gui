@@ -475,7 +475,6 @@ export function useUploadDialog(
    */
   async function cancelCurrentUpload(): Promise<void> {
     if (!currentUploadId.value) {
-      console.warn("No active upload to cancel");
       return;
     }
 
@@ -514,12 +513,10 @@ export function useUploadDialog(
         }, 500);
       } else {
         // Upload already completed/not found
-        console.warn("Upload not found or already completed");
         uploadDialogState.value.isCancelling = false;
         cancelHandled = false; // Reset flag if cancel failed
       }
      } catch (error) {
-       console.error("Failed to cancel upload:", error);
        showToast("error", t("uploadErrors.cancelFailed"));
        uploadDialogState.value.isCancelling = false;
        cancelHandled = false; // Reset flag if cancel failed

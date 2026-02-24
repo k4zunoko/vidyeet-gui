@@ -77,13 +77,11 @@ function initPlayer(playbackId: string) {
   if (Hls.isSupported()) {
     if (hls) {
       // 既存インスタンスを再利用してソース切り替え
-      console.log('[VideoPlayer] Reusing HLS instance');
       hls.loadSource(hlsUrl);
       // attachMediaは既に済んでいるが、念のため呼び出し
       hls.attachMedia(videoRef.value);
     } else {
       // 新規HLSインスタンス作成
-      console.log('[VideoPlayer] Creating new HLS instance');
       hls = new Hls({
         // プロキシ環境での安定性向上
         enableWorker: true,
@@ -160,7 +158,6 @@ watch(
 
     // 同じ動画が選択された場合は再初期化をスキップ
     if (targetId === currentPlaybackId) {
-      console.log('[VideoPlayer] Same video selected, skipping initialization');
       return;
     }
 
