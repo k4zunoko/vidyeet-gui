@@ -28,6 +28,16 @@ import { registerAutoLaunchHandlers } from "./ipc/autoLaunch";
 import autoLaunchManager from "./services/autoLaunchManager";
 import Store from "electron-store";
 
+// Constants for auto-update error messages
+const UPDATE_MESSAGES = {
+  DEFAULT_ERROR:
+    "更新の処理に失敗しました。ネットワークを確認して再試行してください。",
+  CONFIG_MISSING:
+    "更新情報が見つかりませんでした。インストール済みのアプリから実行してください。",
+  RELEASE_NOT_FOUND:
+    "最新のリリースが公開されていないため、更新を確認できません。公開後に再試行してください。",
+} as const;
+
 // Type definition for update state persistence
 interface UpdateState {
   hasPendingUpdate: boolean;
@@ -217,7 +227,7 @@ function setupAutoUpdater() {
     const details = normalizeAutoUpdateErrorDetails(error);
     const resolved = resolveAutoUpdateError(
       details,
-      "更新の処理に失敗しました。ネットワークを確認して再試行してください。",
+      UPDATE_MESSAGES.DEFAULT_ERROR,
     );
     log.error("autoUpdater error", error);
     sendUpdateStatus({ status: "error", error: resolved.message });
@@ -237,8 +247,7 @@ function resolveAutoUpdateError(
   if (normalized.includes("app-update.yml") && normalized.includes("enoent")) {
     return {
       code: "AUTO_UPDATE_CONFIG_MISSING",
-      message:
-        "更新情報が見つかりませんでした。インストール済みのアプリから実行してください。",
+      message: UPDATE_MESSAGES.CONFIG_MISSING,
     };
   }
 
@@ -249,8 +258,7 @@ function resolveAutoUpdateError(
   ) {
     return {
       code: "AUTO_UPDATE_RELEASE_NOT_FOUND",
-      message:
-        "最新のリリースが公開されていないため、更新を確認できません。公開後に再試行してください。",
+      message: UPDATE_MESSAGES.RELEASE_NOT_FOUND,
     };
   }
 
@@ -517,4 +525,3 @@ function continueStartup(): void {
   );
   registerAutoLaunchHandlers();
 }
-
