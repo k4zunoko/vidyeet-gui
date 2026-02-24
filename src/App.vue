@@ -15,7 +15,7 @@ import { useToast } from "./composables/useToast";
 import { useContextMenu } from "./composables/useContextMenu";
 import { useDeleteDialog } from "./composables/useDeleteDialog";
 import { useDragDrop } from "./composables/useDragDrop";
-import { useUploadDialog } from "./composables/useUploadDialog";
+import { useUploadDialog, type FileWithPath } from "./composables/useUploadDialog";
 import TitleBar from "./components/TitleBar.vue";
 import SettingsView from "./features/settings/SettingsView.vue";
 import VideoInfoPanel from "./components/VideoInfoPanel.vue";
@@ -25,6 +25,8 @@ import DragDropOverlay from "./components/DragDropOverlay.vue";
 import LoginView from "./features/auth/LoginView.vue";
 import LibraryView from "./features/library/LibraryView.vue";
 import VideoPlayer from "./features/player/VideoPlayer.vue";
+
+
 
 // 現在の画面
 const currentScreen = ref<AppScreen>("initializing");
@@ -76,7 +78,7 @@ const dragDrop = useDragDrop({
       files.map((f) => ({
         name: f.fileName,
         path: f.filePath,
-      } as any)),
+       } as FileWithPath)),
     );
   },
   showToast,
@@ -273,7 +275,7 @@ async function handleUpload() {
         {
             name: fileName,
             path: selectResult.filePath,
-        } as any,
+         } as FileWithPath,
     ]);
 }
 
