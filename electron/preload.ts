@@ -72,7 +72,7 @@ const vidyeetApi: VidyeetApi = {
      }
      
      if (onProgress) {
-       ipcRenderer.on('vidyeet:uploadProgress', progressListener)
+        ipcRenderer.on(IpcChannels.UPLOAD_PROGRESS, progressListener)
      }
 
      try {
@@ -80,7 +80,7 @@ const vidyeetApi: VidyeetApi = {
      } finally {
        // リスナーをクリーンアップ
        if (onProgress) {
-         ipcRenderer.off('vidyeet:uploadProgress', progressListener)
+          ipcRenderer.off(IpcChannels.UPLOAD_PROGRESS, progressListener)
        }
      }
    },
@@ -152,19 +152,19 @@ contextBridge.exposeInMainWorld('shell', shellApi)
  */
 const windowApi: WindowApi = {
   async minimize(): Promise<void> {
-    return await ipcRenderer.invoke('window:minimize')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_MINIMIZE)
   },
 
   async maximize(): Promise<void> {
-    return await ipcRenderer.invoke('window:maximize')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_MAXIMIZE)
   },
 
   async close(): Promise<void> {
-    return await ipcRenderer.invoke('window:close')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_CLOSE)
   },
 
   async isMaximized(): Promise<boolean> {
-    return await ipcRenderer.invoke('window:isMaximized')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_IS_MAXIMIZED)
   },
 }
 
@@ -179,7 +179,7 @@ contextBridge.exposeInMainWorld('windowControl', windowApi)
  */
 const appApi: AppApi = {
   async getVersion() {
-    return await ipcRenderer.invoke('app:getVersion')
+    return await ipcRenderer.invoke(IpcChannels.APP_GET_VERSION)
   },
   async getUpdateStatus() {
     return await ipcRenderer.invoke(IpcChannels.APP_GET_UPDATE_STATUS)
