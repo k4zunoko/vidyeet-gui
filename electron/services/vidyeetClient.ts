@@ -22,7 +22,7 @@ import type {
   AssetItem,
 } from "../types/ipc";
 import { isIpcError } from "../types/ipc";
-import { dialog, BrowserWindow } from "electron";
+import { dialog, BrowserWindow, type OpenDialogOptions } from "electron";
 import { spawn, type ChildProcess } from "child_process";
 import path from "node:path";
 
@@ -256,21 +256,21 @@ let lastSelectedDirectory: string | undefined;
  */
 export async function selectFile(): Promise<SelectFileResponse | IpcError> {
   const focusedWindow = BrowserWindow.getFocusedWindow();
+  const dialogOptions: OpenDialogOptions = {
+    title: "Select video to upload",
+    defaultPath: lastSelectedDirectory,
+    filters: [
+      {
+        name: "Video Files",
+        extensions: VIDEO_EXTENSIONS,
+      },
+    ],
+    properties: ["openFile"],
+  };
 
-  const result = await dialog.showOpenDialog(
-    focusedWindow ?? (undefined as any),
-    {
-      title: "Select video to upload",
-      defaultPath: lastSelectedDirectory,
-      filters: [
-        {
-          name: "Video Files",
-          extensions: VIDEO_EXTENSIONS,
-        },
-      ],
-      properties: ["openFile"],
-    },
-  );
+  const result = focusedWindow
+    ? await dialog.showOpenDialog(focusedWindow, dialogOptions)
+    : await dialog.showOpenDialog(dialogOptions);
 
   if (result.canceled || result.filePaths.length === 0) {
     return { filePath: null };

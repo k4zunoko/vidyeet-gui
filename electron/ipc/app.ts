@@ -13,7 +13,7 @@ export function registerAppHandlers(): void {
   /**
    * app:getVersion - アプリケーションのバージョンと情報を取得
    */
-  ipcMain.handle("app:getVersion", () => {
+  ipcMain.handle(IpcChannels.APP_GET_VERSION, () => {
     return {
       version: app.getVersion(),
       appName: "Vidyeet",

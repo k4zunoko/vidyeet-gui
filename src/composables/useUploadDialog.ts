@@ -28,6 +28,17 @@ import { useUploadQueue } from "./useUploadQueue";
 import { useProgressInterpolation } from "./useProgressInterpolation";
 import type { UseUploadQueue } from "./useUploadQueue";
 
+// Interface for Electron files with .path property
+interface ElectronFile extends File {
+  path: string;
+}
+
+// Interface for simple file object with path (used in upload flows)
+export interface FileWithPath {
+  name: string;
+  path: string;
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -79,7 +90,7 @@ export interface UseUploadDialog {
   /** アップロードキュー */
   uploadQueue: UseUploadQueue;
   /** 複数ファイルをキューに追加して処理開始 */
-  handleMultipleFiles: (files: File[]) => Promise<void>;
+  handleMultipleFiles: (files: Array<{ name: string; path?: string }>) => Promise<void>;
   /** アップロードダイアログを閉じる */
   closeUploadDialog: () => void;
   /** 現在アップロード中のファイルをキャンセル */
@@ -105,10 +116,10 @@ export interface UseUploadDialog {
  * @returns アップロードダイアログの状態と操作関数
  */
 export function useUploadDialog(
-   options: UseUploadDialogOptions,
+    options: UseUploadDialogOptions,
 ): UseUploadDialog {
-   const { showToast, onUploadComplete } = options;
-   const { t } = useI18n();
+    const { showToast, onUploadComplete } = options;
+    const { t } = useI18n();
 
   // ===========================================================================
   // State
@@ -148,28 +159,28 @@ export function useUploadDialog(
   // Helper Functions
   // ===========================================================================
 
-   /**
-    * アップロードフェーズを日本語に変換
-    *
-    * UX原則:
-    * - 認知負荷軽減: 短く明確なテキスト
-    * - フレーミング効果: ポジティブな表現を使用
-    */
-   function getPhaseText(phase: string): string {
-     const phaseKeys: Record<string, string> = {
-       validating_file: "uploadPhase.validating",
-       file_validated: "uploadPhase.validationComplete",
-       creating_direct_upload: "uploadPhase.preparing",
-       direct_upload_created: "uploadPhase.prepareComplete",
-       uploading_file: "uploadPhase.uploading",
-       uploading_chunk: "uploadPhase.uploading",
-       file_uploaded: "uploadPhase.completed",
-       waiting_for_asset: "uploadPhase.processing",
-       completed: "uploadPhase.done",
-     };
-     const key = phaseKeys[phase];
-     return key ? t(key) : phase;
-   }
+    /**
+     * アップロードフェーズを日本語に変換
+     *
+     * UX原則:
+     * - 認知負荷軽減: 短く明確なテキスト
+     * - フレーミング効果: ポジティブな表現を使用
+     */
+    function getPhaseText(phase: string): string {
+      const phaseKeys: Record<string, string> = {
+        validating_file: "uploadPhase.validating",
+        file_validated: "uploadPhase.validationComplete",
+        creating_direct_upload: "uploadPhase.preparing",
+        direct_upload_created: "uploadPhase.prepareComplete",
+        uploading_file: "uploadPhase.uploading",
+        uploading_chunk: "uploadPhase.uploading",
+        file_uploaded: "uploadPhase.completed",
+        waiting_for_asset: "uploadPhase.processing",
+        completed: "uploadPhase.done",
+      };
+      const key = phaseKeys[phase];
+      return key ? t(key) : phase;
+    }
 
   /**
    * バイト数を人間が読みやすい形式に変換
@@ -335,74 +346,74 @@ export function useUploadDialog(
       return;
     }
 
-     // アップロード状態を初期化
-     currentUploadId.value = null; // Reset before new upload
-     cancelHandled = false; // Reset cancel flag for new upload
-     uploadDialogState.value.fileName = item.fileName;
-     uploadDialogState.value.phase = "starting";
-     uploadDialogState.value.phaseText = t("uploadPhase.starting");
-     uploadDialogState.value.isUploading = true;
-     uploadDialogState.value.errorMessage = null;
-    uploadDialogState.value.progressPercent = 0;
-    uploadDialogState.value.currentChunk = 0;
-    uploadDialogState.value.totalChunks = 0;
-    uploadDialogState.value.bytesSent = 0;
-    uploadDialogState.value.totalBytes = 0;
-    uploadDialogState.value.showProgressBar = false;
+      // アップロード状態を初期化
+      currentUploadId.value = null; // Reset before new upload
+      cancelHandled = false; // Reset cancel flag for new upload
+      uploadDialogState.value.fileName = item.fileName;
+      uploadDialogState.value.phase = "starting";
+      uploadDialogState.value.phaseText = t("uploadPhase.starting");
+      uploadDialogState.value.isUploading = true;
+      uploadDialogState.value.errorMessage = null;
+     uploadDialogState.value.progressPercent = 0;
+     uploadDialogState.value.currentChunk = 0;
+     uploadDialogState.value.totalChunks = 0;
+     uploadDialogState.value.bytesSent = 0;
+     uploadDialogState.value.totalBytes = 0;
+     uploadDialogState.value.showProgressBar = false;
 
-    const { onProgress, cleanup } = createUploadProgressHandler();
-    currentProgressCleanup = cleanup; // Store for potential cancellation
+     const { onProgress, cleanup } = createUploadProgressHandler();
+     currentProgressCleanup = cleanup; // Store for potential cancellation
 
-    // アップロード実行
-    const uploadResult = await window.vidyeet.upload(
-      { filePath: item.filePath },
-      onProgress,
-    );
+     // アップロード実行
+     const uploadResult = await window.vidyeet.upload(
+       { filePath: item.filePath },
+       onProgress,
+     );
 
-    // Check if this upload was cancelled by user
-    // If so, skip error handling as it's already handled by cancelCurrentUpload()
-    if (cancelHandled) {
-      // Cancel handling is in progress, don't process result here
-      return;
-    }
+     // Check if this upload was cancelled by user
+     // If so, skip error handling as it's already handled by cancelCurrentUpload()
+     if (cancelHandled) {
+       // Cancel handling is in progress, don't process result here
+       return;
+     }
 
-    if (isIpcError(uploadResult)) {
-      // エラー: キューに記録
-      uploadQueue.markCurrentError(uploadResult.message);
+     if (isIpcError(uploadResult)) {
+       // エラー: キューに記録
+       uploadQueue.markCurrentError(uploadResult.message);
+       currentUploadId.value = null;
+       currentProgressCleanup = null;
+       uploadDialogState.value.isUploading = false;
+       uploadDialogState.value.errorMessage = uploadResult.message;
+       cleanup();
+
+        // エラートースト表示
+        showToast("error", `${item.fileName}: ${t("uploadErrors.uploadFailed")}`);
+
+       // 次のファイルを処理（少し待ってから）
+       setTimeout(() => {
+         processUploadQueue();
+       }, 1000);
+       return;
+     }
+
+      // 成功: キューに記録
+      uploadQueue.markCurrentCompleted(uploadResult.assetId);
       currentUploadId.value = null;
       currentProgressCleanup = null;
+      uploadDialogState.value.phase = "completed";
+      uploadDialogState.value.phaseText = `${t("uploadPhase.completed")}！`;
       uploadDialogState.value.isUploading = false;
-      uploadDialogState.value.errorMessage = uploadResult.message;
-      cleanup();
 
-       // エラートースト表示
-       showToast("error", `${item.fileName}: ${t("uploadErrors.uploadFailed")}`);
+     // 個別リロード: 成功したファイルをすぐに一覧に追加
+     onUploadComplete();
 
-      // 次のファイルを処理（少し待ってから）
-      setTimeout(() => {
-        processUploadQueue();
-      }, 1000);
-      return;
-    }
+     cleanup();
 
-     // 成功: キューに記録
-     uploadQueue.markCurrentCompleted(uploadResult.assetId);
-     currentUploadId.value = null;
-     currentProgressCleanup = null;
-     uploadDialogState.value.phase = "completed";
-     uploadDialogState.value.phaseText = `${t("uploadPhase.completed")}！`;
-     uploadDialogState.value.isUploading = false;
-
-    // 個別リロード: 成功したファイルをすぐに一覧に追加
-    onUploadComplete();
-
-    cleanup();
-
-    // 次のファイルを処理（少し待ってから）
-    setTimeout(() => {
-      processUploadQueue();
-    }, 800);
-  }
+     // 次のファイルを処理（少し待ってから）
+     setTimeout(() => {
+       processUploadQueue();
+     }, 800);
+   }
 
   // ===========================================================================
   // Public API
@@ -411,37 +422,37 @@ export function useUploadDialog(
   /**
    * 複数ファイルをキューに追加して処理開始
    */
-  async function handleMultipleFiles(files: File[]) {
+  async function handleMultipleFiles(files: Array<{ name: string; path?: string }>): Promise<void> {
     // ファイルパスを取得
     const fileItems: { filePath: string; fileName: string }[] = [];
-     for (const file of files) {
-       const filePath = (file as any).path || "";
-       if (!filePath) {
-         showToast("error", `${file.name}: ${t("uploadErrors.pathError")}`);
-         continue;
-       }
-      fileItems.push({
-        filePath,
-        fileName: file.name,
-      });
-    }
+      for (const file of files) {
+        const filePath = (file as ElectronFile).path || "";
+        if (!filePath) {
+          showToast("error", `${file.name}: ${t("uploadErrors.pathError")}`);
+          continue;
+        }
+       fileItems.push({
+         filePath,
+         fileName: file.name,
+       });
+     }
 
-    if (fileItems.length === 0) {
-      return;
-    }
+     if (fileItems.length === 0) {
+       return;
+     }
 
-    // キューに追加
-    uploadQueue.enqueue(fileItems);
+     // キューに追加
+     uploadQueue.enqueue(fileItems);
 
-    // ダイアログを開く
-    uploadDialogState.value.isOpen = true;
-    uploadDialogState.value.isMinimized = false;
+     // ダイアログを開く
+     uploadDialogState.value.isOpen = true;
+     uploadDialogState.value.isMinimized = false;
 
-    // キューが処理中でなければ開始
-    if (!uploadQueue.isProcessing.value) {
-      await processUploadQueue();
-    }
-  }
+     // キューが処理中でなければ開始
+     if (!uploadQueue.isProcessing.value) {
+       await processUploadQueue();
+     }
+   }
 
   /**
    * アップロードダイアログを閉じる
@@ -475,7 +486,6 @@ export function useUploadDialog(
    */
   async function cancelCurrentUpload(): Promise<void> {
     if (!currentUploadId.value) {
-      console.warn("No active upload to cancel");
       return;
     }
 
@@ -490,40 +500,38 @@ export function useUploadDialog(
       // Call IPC to kill CLI process
       const result = await window.vidyeet.cancelUpload(uploadIdToCancel);
       
-       if (result.success) {
-         // Mark as error with neutral message
-         uploadQueue.markCurrentError(t("uploadErrors.cancelled"));
+        if (result.success) {
+          // Mark as error with neutral message
+          uploadQueue.markCurrentError(t("uploadErrors.cancelled"));
+          
+          // Show toast notification
+          showToast("info", t("uploadErrors.cancelSuccess"));
          
-         // Show toast notification
-         showToast("info", t("uploadErrors.cancelSuccess"));
-        
-        // Clean up state
-        currentUploadId.value = null;
-        uploadDialogState.value.isCancelling = false;
-        uploadDialogState.value.isUploading = false;
-        
-        // Clean up progress interpolation if exists
-        if (currentProgressCleanup) {
-          currentProgressCleanup();
-          currentProgressCleanup = null;
-        }
-        
-        // Continue to next item in queue
-        setTimeout(() => {
-          processUploadQueue();
-        }, 500);
-      } else {
-        // Upload already completed/not found
-        console.warn("Upload not found or already completed");
+         // Clean up state
+         currentUploadId.value = null;
+         uploadDialogState.value.isCancelling = false;
+         uploadDialogState.value.isUploading = false;
+         
+         // Clean up progress interpolation if exists
+         if (currentProgressCleanup) {
+           currentProgressCleanup();
+           currentProgressCleanup = null;
+         }
+         
+         // Continue to next item in queue
+         setTimeout(() => {
+           processUploadQueue();
+         }, 500);
+       } else {
+         // Upload already completed/not found
+         uploadDialogState.value.isCancelling = false;
+         cancelHandled = false; // Reset flag if cancel failed
+       }
+      } catch (error) {
+        showToast("error", t("uploadErrors.cancelFailed"));
         uploadDialogState.value.isCancelling = false;
         cancelHandled = false; // Reset flag if cancel failed
       }
-     } catch (error) {
-       console.error("Failed to cancel upload:", error);
-       showToast("error", t("uploadErrors.cancelFailed"));
-       uploadDialogState.value.isCancelling = false;
-       cancelHandled = false; // Reset flag if cancel failed
-     }
   }
 
   /**

@@ -13,11 +13,11 @@
 import { ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type {
-   CopyTemplate,
-   ApplyTemplateRequest,
-   SaveTemplateRequest,
-   DeleteTemplateRequest,
- } from "../../electron/types/ipc";
+    CopyTemplate,
+    ApplyTemplateRequest,
+    SaveTemplateRequest,
+    DeleteTemplateRequest,
+  } from "../../electron/types/ipc";
 import { isIpcError } from "../../electron/types/ipc";
 
 /**
@@ -89,7 +89,7 @@ export function useCopyTemplates(): UseCopyTemplates {
     error.value = null;
 
     try {
-      const result = await (window as any).vidyeet.getTemplates();
+      const result = await window.vidyeet.getTemplates();
 
       if (isIpcError(result)) {
         error.value = handleError(result);
@@ -124,7 +124,7 @@ export function useCopyTemplates(): UseCopyTemplates {
         content: payload.content,
       };
 
-      const result = await (window as any).vidyeet.saveTemplate(request);
+      const result = await window.vidyeet.saveTemplate(request);
 
       if (isIpcError(result)) {
         error.value = handleError(result);
@@ -174,7 +174,7 @@ export function useCopyTemplates(): UseCopyTemplates {
         content: updated.content,
       };
 
-      const result = await (window as any).vidyeet.saveTemplate(request);
+      const result = await window.vidyeet.saveTemplate(request);
 
       if (isIpcError(result)) {
         error.value = handleError(result);
@@ -198,38 +198,38 @@ export function useCopyTemplates(): UseCopyTemplates {
     }
   }
 
-   /**
-    * テンプレートを削除
-    *
-    * @param id - テンプレートID
-    * @returns 成功したかどうか
-    */
-   async function deleteTemplate(id: string): Promise<boolean> {
-     error.value = null;
+    /**
+     * テンプレートを削除
+     *
+     * @param id - テンプレートID
+     * @returns 成功したかどうか
+     */
+    async function deleteTemplate(id: string): Promise<boolean> {
+      error.value = null;
 
-     try {
-       const request: DeleteTemplateRequest = { id };
-       const result = await (window as any).vidyeet.deleteTemplate(request);
+      try {
+        const request: DeleteTemplateRequest = { id };
+        const result = await window.vidyeet.deleteTemplate(request);
 
-       if (isIpcError(result)) {
-         error.value = handleError(result);
-         return false;
-       }
+        if (isIpcError(result)) {
+          error.value = handleError(result);
+          return false;
+        }
 
-       if (!result.success) {
-         error.value = t("copyTemplate.errors.deleteFailed");
-         return false;
-       }
+        if (!result.success) {
+          error.value = t("copyTemplate.errors.deleteFailed");
+          return false;
+        }
 
-       // ローカル状態から削除
-       templates.value = templates.value.filter((t) => t.id !== id);
+        // ローカル状態から削除
+        templates.value = templates.value.filter((t) => t.id !== id);
 
-       return true;
-     } catch (err) {
-       error.value = handleError(err);
-       return false;
-     }
-   }
+        return true;
+      } catch (err) {
+        error.value = handleError(err);
+        return false;
+      }
+    }
 
   /**
    * テンプレートを適用（変数を置換）
@@ -250,7 +250,7 @@ export function useCopyTemplates(): UseCopyTemplates {
         variables,
       };
 
-      const result = await (window as any).vidyeet.applyTemplate(request);
+      const result = await window.vidyeet.applyTemplate(request);
 
       if (isIpcError(result)) {
         error.value = handleError(result);

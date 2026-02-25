@@ -72,7 +72,7 @@ const vidyeetApi: VidyeetApi = {
      }
      
      if (onProgress) {
-       ipcRenderer.on('vidyeet:uploadProgress', progressListener)
+        ipcRenderer.on(IpcChannels.UPLOAD_PROGRESS, progressListener)
      }
 
      try {
@@ -80,7 +80,7 @@ const vidyeetApi: VidyeetApi = {
      } finally {
        // リスナーをクリーンアップ
        if (onProgress) {
-         ipcRenderer.off('vidyeet:uploadProgress', progressListener)
+          ipcRenderer.off(IpcChannels.UPLOAD_PROGRESS, progressListener)
        }
      }
    },
@@ -152,19 +152,19 @@ contextBridge.exposeInMainWorld('shell', shellApi)
  */
 const windowApi: WindowApi = {
   async minimize(): Promise<void> {
-    return await ipcRenderer.invoke('window:minimize')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_MINIMIZE)
   },
 
   async maximize(): Promise<void> {
-    return await ipcRenderer.invoke('window:maximize')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_MAXIMIZE)
   },
 
   async close(): Promise<void> {
-    return await ipcRenderer.invoke('window:close')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_CLOSE)
   },
 
   async isMaximized(): Promise<boolean> {
-    return await ipcRenderer.invoke('window:isMaximized')
+    return await ipcRenderer.invoke(IpcChannels.WINDOW_IS_MAXIMIZED)
   },
 }
 
@@ -179,7 +179,7 @@ contextBridge.exposeInMainWorld('windowControl', windowApi)
  */
 const appApi: AppApi = {
   async getVersion() {
-    return await ipcRenderer.invoke('app:getVersion')
+    return await ipcRenderer.invoke(IpcChannels.APP_GET_VERSION)
   },
   async getUpdateStatus() {
     return await ipcRenderer.invoke(IpcChannels.APP_GET_UPDATE_STATUS)
@@ -254,40 +254,3 @@ const autoLaunchApi: AutoLaunchApi = {
 
 contextBridge.exposeInMainWorld('autoLaunch', autoLaunchApi)
 
-// =============================================================================
-// Legacy ipcRenderer API (for backward compatibility)
-// =============================================================================
-
-/**
- * @deprecated 後方互換のために残しているが、新規コードでは使用禁止
- *
- * Renderer は高水準API（window.vidyeet）を使用すること。
- * この API は段階的に廃止予定：
- * 1. 新規機能では window.vidyeet のみ使用
- * 2. 既存の window.ipcRenderer 使用箇所を window.vidyeet に移行
- * 3. 移行完了後、この公開を削除
- *
- * IPC型定義はelectron/types/ipc.ts、Preload設計はelectron/preload.tsのコメント参照
- */
-// --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('ipcRenderer', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
-  },
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
-  },
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
-
-  // You can expose other APTs you need here.
-  // ...
-})

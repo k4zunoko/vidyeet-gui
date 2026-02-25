@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 
-import type { IpcRenderer } from 'electron'
 import type {
   VidyeetApi,
   WindowApi,
@@ -12,7 +11,6 @@ import type {
 
 declare global {
   interface Window {
-    ipcRenderer: IpcRenderer
     vidyeet: VidyeetApi
     windowControl: WindowApi
     clipboard: ClipboardApi

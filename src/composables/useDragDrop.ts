@@ -14,6 +14,11 @@ import { ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { ToastType } from "../types/app";
 
+// Interface for Electron files with .path property
+interface ElectronFile extends File {
+  path: string;
+}
+
 // 対応する動画ファイル形式
 const VIDEO_EXTENSIONS = [
   "video/mp4",
@@ -47,128 +52,128 @@ function isVideoFile(file: File): boolean {
  * @param options.showToast - トースト通知を表示するコールバック
  */
 export function useDragDrop(options: {
-   onFilesDropped: (files: { filePath: string; fileName: string }[]) => void;
-   showToast: (type: ToastType, message: string) => void;
- }): UseDragDrop {
-   const isDragging = ref(false);
-   const { t } = useI18n();
-   let dragCounter = 0; // 子要素へのドラッグ判定用カウンター
+    onFilesDropped: (files: { filePath: string; fileName: string }[]) => void;
+    showToast: (type: ToastType, message: string) => void;
+  }): UseDragDrop {
+    const isDragging = ref(false);
+    const { t } = useI18n();
+    let dragCounter = 0; // 子要素へのドラッグ判定用カウンター
 
-  /**
-   * dragenter イベントハンドラ
-   * UX原則: ドハティの閾値 - 即座に視覚的フィードバックを提供
-   */
-  function handleDragEnter(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+   /**
+    * dragenter イベントハンドラ
+    * UX原則: ドハティの閾値 - 即座に視覚的フィードバックを提供
+    */
+   function handleDragEnter(e: DragEvent) {
+     e.preventDefault();
+     e.stopPropagation();
 
-    dragCounter++;
-    if (dragCounter === 1) {
-      isDragging.value = true;
-    }
-  }
+     dragCounter++;
+     if (dragCounter === 1) {
+       isDragging.value = true;
+     }
+   }
 
-  /**
-   * dragleave イベントハンドラ
-   */
-  function handleDragLeave(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+   /**
+    * dragleave イベントハンドラ
+    */
+   function handleDragLeave(e: DragEvent) {
+     e.preventDefault();
+     e.stopPropagation();
 
-    dragCounter--;
-    if (dragCounter === 0) {
-      isDragging.value = false;
-    }
-  }
+     dragCounter--;
+     if (dragCounter === 0) {
+       isDragging.value = false;
+     }
+   }
 
-  /**
-   * dragover イベントハンドラ
-   */
-  function handleDragOver(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
+   /**
+    * dragover イベントハンドラ
+    */
+   function handleDragOver(e: DragEvent) {
+     e.preventDefault();
+     e.stopPropagation();
+   }
 
-  /**
-   * drop イベントハンドラ
-   * UX原則:
-   * - ドハティの閾値: ドロップ後即座にアップロード進捗ダイアログを表示
-   * - フレーミング効果: エラーは次の行動を示唆
-   */
-  async function handleDrop(e: DragEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+   /**
+    * drop イベントハンドラ
+    * UX原則:
+    * - ドハティの閾値: ドロップ後即座にアップロード進捗ダイアログを表示
+    * - フレーミング効果: エラーは次の行動を示唆
+    */
+   async function handleDrop(e: DragEvent) {
+     e.preventDefault();
+     e.stopPropagation();
 
-    // ドラッグ状態をリセット
-    isDragging.value = false;
-    dragCounter = 0;
+     // ドラッグ状態をリセット
+     isDragging.value = false;
+     dragCounter = 0;
 
-    // ファイルを取得
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) {
-      return;
-    }
-
-    // 動画形式チェック（複数ファイル対応）
-    const videoFiles: File[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (isVideoFile(file)) {
-        videoFiles.push(file);
-      }
-    }
-
-     if (videoFiles.length === 0) {
-       options.showToast("error", t("app.upload.error"));
+     // ファイルを取得
+     const files = e.dataTransfer?.files;
+     if (!files || files.length === 0) {
        return;
      }
 
-    // ファイルパスを取得してコールバックに渡す
-    const fileItems: { filePath: string; fileName: string }[] = [];
-    for (const file of videoFiles) {
-      const filePath = (file as any).path || "";
-       if (!filePath) {
-         options.showToast(
-           "error",
-           `${file.name}: ${t("uploadErrors.pathError")}`,
-         );
-         continue;
+     // 動画形式チェック（複数ファイル対応）
+     const videoFiles: File[] = [];
+     for (let i = 0; i < files.length; i++) {
+       const file = files[i];
+       if (isVideoFile(file)) {
+         videoFiles.push(file);
        }
-      fileItems.push({
-        filePath,
-        fileName: file.name,
-      });
-    }
+     }
 
-    if (fileItems.length > 0) {
-      options.onFilesDropped(fileItems);
-    }
-  }
+      if (videoFiles.length === 0) {
+        options.showToast("error", t("app.upload.error"));
+        return;
+      }
 
-  /**
-   * グローバルドラッグアンドドロップイベントをセットアップ
-   * UX原則: ウィンドウ全体でドロップを受け付けることで、ユーザビリティを向上
-   */
-  function setupGlobalListeners() {
-    document.addEventListener("dragenter", handleDragEnter);
-    document.addEventListener("dragleave", handleDragLeave);
-    document.addEventListener("dragover", handleDragOver);
-    document.addEventListener("drop", handleDrop);
-  }
+     // ファイルパスを取得してコールバックに渡す
+     const fileItems: { filePath: string; fileName: string }[] = [];
+     for (const file of videoFiles) {
+       const filePath = (file as ElectronFile).path || "";
+        if (!filePath) {
+          options.showToast(
+            "error",
+            `${file.name}: ${t("uploadErrors.pathError")}`,
+          );
+          continue;
+        }
+       fileItems.push({
+         filePath,
+         fileName: file.name,
+       });
+     }
 
-  /**
-   * グローバルドラッグアンドドロップイベントをクリーンアップ
-   */
-  function cleanupGlobalListeners() {
-    document.removeEventListener("dragenter", handleDragEnter);
-    document.removeEventListener("dragleave", handleDragLeave);
-    document.removeEventListener("dragover", handleDragOver);
-    document.removeEventListener("drop", handleDrop);
-  }
+     if (fileItems.length > 0) {
+       options.onFilesDropped(fileItems);
+     }
+   }
 
-  return {
-    isDragging,
-    setupGlobalListeners,
-    cleanupGlobalListeners,
-  };
+   /**
+    * グローバルドラッグアンドドロップイベントをセットアップ
+    * UX原則: ウィンドウ全体でドロップを受け付けることで、ユーザビリティを向上
+    */
+   function setupGlobalListeners() {
+     document.addEventListener("dragenter", handleDragEnter);
+     document.addEventListener("dragleave", handleDragLeave);
+     document.addEventListener("dragover", handleDragOver);
+     document.addEventListener("drop", handleDrop);
+   }
+
+   /**
+    * グローバルドラッグアンドドロップイベントをクリーンアップ
+    */
+   function cleanupGlobalListeners() {
+     document.removeEventListener("dragenter", handleDragEnter);
+     document.removeEventListener("dragleave", handleDragLeave);
+     document.removeEventListener("dragover", handleDragOver);
+     document.removeEventListener("drop", handleDrop);
+   }
+
+   return {
+     isDragging,
+     setupGlobalListeners,
+     cleanupGlobalListeners,
+   };
 }

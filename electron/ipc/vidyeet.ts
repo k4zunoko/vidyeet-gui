@@ -73,7 +73,7 @@ export function registerVidyeetHandlers(): void {
   ipcMain.handle(IpcChannels.UPLOAD, async (event, request: UploadRequest) => {
     return await upload(request, (progress: UploadProgress) => {
       // 進捗をRendererに送信
-      event.sender.send("vidyeet:uploadProgress", progress);
+      event.sender.send(IpcChannels.UPLOAD_PROGRESS, progress);
     });
   });
 

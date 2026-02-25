@@ -5,6 +5,7 @@
  */
 
 import { ipcMain, BrowserWindow } from "electron";
+import { IpcChannels } from "../types/ipc";
 
 export function registerWindowHandlers(
   getWindow: () => BrowserWindow | null,
@@ -12,14 +13,14 @@ export function registerWindowHandlers(
   /**
    * window:minimize - ウィンドウを最小化
    */
-  ipcMain.handle("window:minimize", () => {
+  ipcMain.handle(IpcChannels.WINDOW_MINIMIZE, () => {
     getWindow()?.minimize();
   });
 
   /**
    * window:maximize - ウィンドウを最大化/元に戻す
    */
-  ipcMain.handle("window:maximize", () => {
+  ipcMain.handle(IpcChannels.WINDOW_MAXIMIZE, () => {
     const win = getWindow();
     if (win?.isMaximized()) {
       win.unmaximize();
@@ -31,14 +32,14 @@ export function registerWindowHandlers(
   /**
    * window:close - ウィンドウを閉じる（タスクトレイに格納）
    */
-  ipcMain.handle("window:close", () => {
+  ipcMain.handle(IpcChannels.WINDOW_CLOSE, () => {
     getWindow()?.hide();
   });
 
   /**
    * window:isMaximized - 最大化状態を取得
    */
-  ipcMain.handle("window:isMaximized", () => {
+  ipcMain.handle(IpcChannels.WINDOW_IS_MAXIMIZED, () => {
     return getWindow()?.isMaximized() ?? false;
   });
 }

@@ -297,6 +297,12 @@ export const IpcChannels = {
   APP_WINDOW_HIDDEN: "app:windowHidden",
   APP_GET_UPDATE_STATUS: "app:getUpdateStatus",
   APP_CLEAR_UPDATE_TOAST: "app:clearUpdateToast",
+  WINDOW_MINIMIZE: "window:minimize",
+  WINDOW_MAXIMIZE: "window:maximize",
+  WINDOW_CLOSE: "window:close",
+  WINDOW_IS_MAXIMIZED: "window:isMaximized",
+  APP_GET_VERSION: "app:getVersion",
+  UPLOAD_PROGRESS: "vidyeet:uploadProgress",
 } as const;
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels];
