@@ -47,8 +47,49 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  /* Colors - Scrollbar */
+  --color-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+
   /* Color scheme */
   color-scheme: dark;
+}
+
+/* =============================================================================
+   CSS Variables (Light Theme)
+   ============================================================================= */
+
+:root[data-theme="light"] {
+  /* Colors - Background */
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-dark: #f0f0f0;
+  --color-surface-hover: #e8e8e8;
+
+  /* Colors - Text */
+  --color-text: rgba(0, 0, 0, 0.87);
+  --color-text-muted: rgba(0, 0, 0, 0.5);
+
+  /* Colors - Primary (Mux Pink) */
+  --color-primary: #fa50b5;
+  --color-primary-hover: #e8449f;
+  --color-primary-alpha: rgba(250, 80, 181, 0.15);
+
+  /* Colors - Semantic */
+  --color-error: #e53935;
+  --color-error-bg: rgba(229, 57, 53, 0.1);
+  --color-success: #43a047;
+
+  /* Colors - Border */
+  --color-border: rgba(0, 0, 0, 0.12);
+
+  /* Colors - Input */
+  --color-input-bg: #ffffff;
+
+  /* Colors - Scrollbar */
+  --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.2);
+
+  /* Color scheme */
+  color-scheme: light;
 }
 
 /* =============================================================================
@@ -132,7 +173,7 @@ input:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-scrollbar-thumb-hover);
 }
 
 /* =============================================================================
