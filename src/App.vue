@@ -13,6 +13,7 @@ import { useI18n } from "vue-i18n";
 import { isIpcError } from "../electron/types/ipc";
 import { useToast } from "./composables/useToast";
 import { useContextMenu } from "./composables/useContextMenu";
+import { useTheme } from './composables/useTheme';
 
 import { useDragDrop } from "./composables/useDragDrop";
 import { type FileWithPath } from "./composables/useUploadDialog";
@@ -50,6 +51,9 @@ const unsubscribeWindowHidden = ref<(() => void) | null>(null);
 
 // i18n
 const { t } = useI18n();
+
+// テーマ管理（グローバルマウント — matchMediaリスナーをアプリ全体で維持）
+useTheme();
 
 // =============================================================================
 // コンテキストメニュー状態（グローバル管理）

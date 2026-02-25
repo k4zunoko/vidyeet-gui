@@ -83,7 +83,9 @@
       "section": {
         "language": "言語設定",
         "languageDesc": "インターフェースの表示言語",
-        "autoLaunch": "自動起動設定"
+        "autoLaunch": "自動起動設定",
+        "theme": "テーマ設定",
+        "themeDesc": "アプリの外観テーマを選択"
       },
       "language": {
         "label": "表示言語",
@@ -91,6 +93,16 @@
       },
       "autoLaunch": {
         "label": "PCの起動時に自動起動"
+      },
+      "autoLaunch": {
+        "label": "PCの起動時に自動起動"
+      },
+      "theme": {
+        "label": "テーマ",
+        "description": "アプリの配色を切り替えます",
+        "light": "ライト",
+        "dark": "ダーク",
+        "system": "システムに合わせる"
       }
     },
     "data": {

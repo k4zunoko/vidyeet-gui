@@ -83,10 +83,19 @@ export interface MessageSchema {
       section: {
         language: string;
         languageDesc: string;
+        theme: string;
+        themeDesc: string;
       };
       language: {
         label: string;
         description: string;
+      };
+      theme: {
+        label: string;
+        description: string;
+        light: string;
+        dark: string;
+        system: string;
       };
     };
     data: {

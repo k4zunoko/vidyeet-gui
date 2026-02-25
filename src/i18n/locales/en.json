@@ -83,14 +83,25 @@
       "section": {
         "language": "Language Settings",
         "languageDesc": "Interface display language",
-        "autoLaunch": "Auto-launch Settings"
+        "autoLaunch": "Auto-launch Settings",
+        "theme": "Theme",
+        "themeDesc": "Choose the appearance theme"
       },
       "language": {
         "label": "Display Language",
         "description": "Select app display language"
       },
       "autoLaunch": {
+      },
+      "autoLaunch": {
         "label": "Auto-launch on PC startup"
+      },
+      "theme": {
+        "label": "Theme",
+        "description": "Switch the app color scheme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "Follow system"
       }
     },
     "data": {

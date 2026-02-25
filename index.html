@@ -9,6 +9,16 @@
             content="Safe and Convenient Video Uploading and Management."
         />
         <title>Vidyeet</title>
+        <script>
+          (function() {
+            var theme = localStorage.getItem('vidyeet-theme') || 'dark';
+            if (theme === 'system') {
+              theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', theme);
+            document.documentElement.style.colorScheme = theme;
+          })();
+        </script>
     </head>
     <body>
         <div id="app"></div>
