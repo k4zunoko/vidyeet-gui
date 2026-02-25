@@ -10,12 +10,15 @@ import SettingSection from "../components/SettingSection.vue";
 import SettingItem from "../components/SettingItem.vue";
 import RadioGroup from "../components/controls/RadioGroup.vue";
 import ToggleSwitch from "../components/controls/ToggleSwitch.vue";
-import { useLanguage } from "../../../composables/useLanguage";
-import { useAutoLaunch } from "../../../composables/useAutoLaunch";
-import type { SupportedLocale } from "../../../i18n";
+import { useLanguage } from '../../../composables/useLanguage';
+import { useTheme } from '../../../composables/useTheme';
+import type { ThemeOption } from '../../../composables/useTheme';
+import { useAutoLaunch } from '../../../composables/useAutoLaunch';
+import type { SupportedLocale } from '../../../i18n';
 
 const { t } = useI18n();
 const { currentLanguage, setLanguage } = useLanguage();
+const { currentTheme, setTheme } = useTheme(); // Used in template
 const { enabled, isLoading, error, loadState, setAutoLaunch } = useAutoLaunch();
 
 // 言語オプション（言語変更時にリアクティブに更新）
@@ -32,6 +35,27 @@ const languageOptions = computed(() => [
 
 function handleLanguageChange(value: string) {
     setLanguage(value as SupportedLocale);
+}
+
+// テーマオプション（テーマ変更時にリアクティブに更新）
+
+const themeOptions = computed(() => [
+    {
+        value: 'light',
+        label: t('settings.display.theme.light'),
+    },
+    {
+        value: 'dark',
+        label: t('settings.display.theme.dark'),
+    },
+    {
+        value: 'system',
+        label: t('settings.display.theme.system'),
+    },
+]);
+
+function handleThemeChange(value: string) {
+    setTheme(value as ThemeOption);
 }
 
 /**
@@ -54,6 +78,23 @@ onMounted(async () => {
 
 <template>
     <div class="display-settings">
+        <SettingSection
+            :title="t('settings.display.section.theme')"
+            :description="t('settings.display.section.themeDesc')"
+        >
+            <SettingItem
+                :label="t('settings.display.theme.label')"
+                :description="t('settings.display.theme.description')"
+            >
+                <RadioGroup
+                    v-model="currentTheme"
+                    name="theme"
+                    :options="themeOptions"
+                    @update:model-value="handleThemeChange"
+                />
+            </SettingItem>
+        </SettingSection>
+
         <SettingSection
             :title="t('settings.display.section.language')"
             :description="t('settings.display.section.languageDesc')"

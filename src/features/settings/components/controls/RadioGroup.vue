@@ -128,7 +128,7 @@ function handleChange(value: string) {
 
 .radio-option.is-selected {
     border-color: var(--color-primary);
-    background: rgba(250, 80, 181, 0.08);
+    background: var(--color-primary-alpha);
 }
 
 .radio-input {
