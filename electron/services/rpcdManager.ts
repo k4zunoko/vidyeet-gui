@@ -1,10 +1,10 @@
-import { app } from 'electron';
-import { spawn } from 'child_process';
-import type { ChildProcess } from 'child_process';
-import Store from 'electron-store';
-import log from 'electron-log/main';
-import path from 'path';
-import fs from 'fs';
+import { app } from "electron";
+import { spawn } from "child_process";
+import type { ChildProcess } from "child_process";
+import Store from "electron-store";
+import log from "electron-log/main";
+import path from "path";
+import fs from "fs";
 
 interface RichPresenceStore {
   richPresence: {
@@ -22,7 +22,7 @@ interface RichPresenceStore {
 class RpcdManager {
   private childProcess: ChildProcess | null = null;
   private store: Store<RichPresenceStore>;
-  private readonly STORE_KEY = 'richPresence';
+  private readonly STORE_KEY = "richPresence";
   private readonly DEFAULT_STATE = {
     richPresence: {
       enabled: true,
@@ -43,9 +43,9 @@ class RpcdManager {
   private resolveRpcdPath(): string {
     const isDev = !app.isPackaged;
     const binDir = isDev
-      ? path.join(process.cwd(), 'bin')
-      : path.join(process.resourcesPath, 'bin');
-    return path.join(binDir, 'rpcd.exe');
+      ? path.join(process.cwd(), "bin")
+      : path.join(process.resourcesPath, "bin");
+    return path.join(binDir, "rpcd.exe");
   }
 
   /**
@@ -54,8 +54,8 @@ class RpcdManager {
   private resolveBinDir(): string {
     const isDev = !app.isPackaged;
     return isDev
-      ? path.join(process.cwd(), 'bin')
-      : path.join(process.resourcesPath, 'bin');
+      ? path.join(process.cwd(), "bin")
+      : path.join(process.resourcesPath, "bin");
   }
 
   /**
@@ -66,13 +66,13 @@ class RpcdManager {
   start(): void {
     // Double-start guard
     if (this.childProcess) {
-      log.info('[RpcdManager] rpcd already running, skipping start');
+      log.info("[RpcdManager] rpcd already running, skipping start");
       return;
     }
 
     // Check if enabled
     if (!this.isEnabled()) {
-      log.info('[RpcdManager] Rich Presence is disabled, skipping start');
+      log.info("[RpcdManager] Rich Presence is disabled, skipping start");
       return;
     }
 
@@ -87,33 +87,38 @@ class RpcdManager {
 
     try {
       log.info(`[RpcdManager] Starting rpcd from: ${rpcdPath}`);
-      const child = spawn('rpcd.exe', [
-        '--app-id', '1234567890', // TODO: Replace with actual Discord application ID
-        '--name', 'Vidyeet',
-        '--details', '動画を共有中',
-        '--state', 'アイドル',
-        '--timestamp-start',
-      ], {
-        cwd: binDir,
-        detached: false,
-        windowsHide: true,
-        stdio: 'ignore',
-      });
+      const child = spawn(
+        "rpcd.exe",
+        [
+          "--app-id",
+          "1471026532247011491", // TODO: Replace with actual Discord application ID
+          "--large-image",
+          "https://raw.githubusercontent.com/k4zunoko/vidyeet-gui/refs/heads/main/public/icon.png",
+          "--button",
+          "GitHub Release,https://github.com/k4zunoko/vidyeet-gui/releases/latest",
+        ],
+        {
+          cwd: binDir,
+          detached: false,
+          windowsHide: true,
+          stdio: "ignore",
+        },
+      );
 
-      child.on('exit', (code) => {
+      child.on("exit", (code) => {
         log.info(`[RpcdManager] rpcd exited with code: ${code}`);
         this.childProcess = null;
       });
 
-      child.on('error', (err) => {
-        log.error('[RpcdManager] rpcd spawn error:', err);
+      child.on("error", (err) => {
+        log.error("[RpcdManager] rpcd spawn error:", err);
         this.childProcess = null;
       });
 
       this.childProcess = child;
-      log.info('[RpcdManager] rpcd started successfully');
+      log.info("[RpcdManager] rpcd started successfully");
     } catch (error) {
-      log.error('[RpcdManager] Failed to start rpcd:', error);
+      log.error("[RpcdManager] Failed to start rpcd:", error);
     }
   }
 
@@ -132,21 +137,23 @@ class RpcdManager {
     try {
       this.childProcess.kill();
     } catch (error) {
-      log.error('[RpcdManager] kill() failed:', error);
+      log.error("[RpcdManager] kill() failed:", error);
     }
 
     // Taskkill fallback after 500ms
     if (pid) {
       setTimeout(() => {
         if (this.childProcess !== null) {
-          log.warn(`[RpcdManager] rpcd still running after kill(), using taskkill /PID ${pid} /T /F`);
+          log.warn(
+            `[RpcdManager] rpcd still running after kill(), using taskkill /PID ${pid} /T /F`,
+          );
           try {
-            spawn('taskkill', ['/PID', String(pid), '/T', '/F'], {
+            spawn("taskkill", ["/PID", String(pid), "/T", "/F"], {
               windowsHide: true,
-              stdio: 'ignore',
+              stdio: "ignore",
             });
           } catch (error) {
-            log.error('[RpcdManager] taskkill failed:', error);
+            log.error("[RpcdManager] taskkill failed:", error);
           }
           this.childProcess = null;
         }
@@ -164,7 +171,7 @@ class RpcdManager {
       const enabled = this.store.get(`${this.STORE_KEY}.enabled`);
       return enabled ?? this.DEFAULT_STATE.richPresence.enabled;
     } catch (error) {
-      log.error('[RpcdManager] Failed to read enabled state:', error);
+      log.error("[RpcdManager] Failed to read enabled state:", error);
       return this.DEFAULT_STATE.richPresence.enabled;
     }
   }
@@ -175,14 +182,16 @@ class RpcdManager {
   setEnabled(enabled: boolean): void {
     try {
       this.store.set(`${this.STORE_KEY}.enabled`, enabled);
-      log.info(`[RpcdManager] Rich Presence ${enabled ? 'enabled' : 'disabled'}`);
+      log.info(
+        `[RpcdManager] Rich Presence ${enabled ? "enabled" : "disabled"}`,
+      );
       if (enabled) {
         this.start();
       } else {
         this.stop();
       }
     } catch (error) {
-      log.error('[RpcdManager] Failed to set enabled state:', error);
+      log.error("[RpcdManager] Failed to set enabled state:", error);
     }
   }
 
