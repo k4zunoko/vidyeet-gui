@@ -85,7 +85,8 @@
         "languageDesc": "Interface display language",
         "autoLaunch": "Auto-launch Settings",
         "theme": "Theme",
-        "themeDesc": "Choose the appearance theme"
+        "themeDesc": "Choose the appearance theme",
+        "richPresence": "Discord Rich Presence"
       },
       "language": {
         "label": "Display Language",
@@ -95,6 +96,9 @@
       },
       "autoLaunch": {
         "label": "Auto-launch on PC startup"
+      },
+      "richPresence": {
+        "label": "Enable Discord Rich Presence"
       },
       "theme": {
         "label": "Theme",

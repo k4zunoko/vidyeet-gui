@@ -14,12 +14,14 @@ import { useLanguage } from '../../../composables/useLanguage';
 import { useTheme } from '../../../composables/useTheme';
 import type { ThemeOption } from '../../../composables/useTheme';
 import { useAutoLaunch } from '../../../composables/useAutoLaunch';
+import { useRichPresence } from '../../../composables/useRichPresence';
 import type { SupportedLocale } from '../../../i18n';
 
 const { t } = useI18n();
 const { currentLanguage, setLanguage } = useLanguage();
 const { currentTheme, setTheme } = useTheme(); // Used in template
 const { enabled, isLoading, error, loadState, setAutoLaunch } = useAutoLaunch();
+const { enabled: richPresenceEnabled, isLoading: richPresenceLoading, error: richPresenceError, loadState: loadRichPresenceState, setRichPresence } = useRichPresence();
 
 // 言語オプション（言語変更時にリアクティブに更新）
 const languageOptions = computed(() => [
@@ -71,8 +73,22 @@ async function handleAutoLaunchChange(value: boolean) {
     }
 }
 
+/**
+ * Handle Rich Presence toggle change
+ * Reverts toggle on error
+ */
+async function handleRichPresenceChange(value: boolean) {
+    try {
+        await setRichPresence(value);
+    } catch (err) {
+        // Error already handled in composable
+        // setRichPresence will set error state and revert toggle internally
+    }
+}
+
 onMounted(async () => {
     await loadState();
+    await loadRichPresenceState();
 });
 </script>
 
@@ -136,6 +152,31 @@ onMounted(async () => {
                 @update:model-value="handleAutoLaunchChange"
             />
         </SettingSection>
+
+        <SettingSection
+            :title="t('settings.display.section.richPresence')"
+        >
+            <SettingItem
+                v-if="richPresenceError"
+                :label="t('settings.display.richPresence.label')"
+                :description="richPresenceError"
+                class="rich-presence-error"
+            >
+                <ToggleSwitch
+                    :model-value="richPresenceEnabled"
+                    :label="t('settings.display.richPresence.label')"
+                    :disabled="richPresenceLoading"
+                    @update:model-value="handleRichPresenceChange"
+                />
+            </SettingItem>
+            <ToggleSwitch
+                v-else
+                :model-value="richPresenceEnabled"
+                :label="t('settings.display.richPresence.label')"
+                :disabled="richPresenceLoading"
+                @update:model-value="handleRichPresenceChange"
+            />
+        </SettingSection>
     </div>
 </template>
 
@@ -147,6 +188,10 @@ onMounted(async () => {
 }
 
 .auto-launch-error {
+    color: var(--color-error, #ef4444);
+}
+
+.rich-presence-error {
     color: var(--color-error, #ef4444);
 }
 </style>

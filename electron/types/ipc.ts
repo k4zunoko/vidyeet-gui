@@ -23,7 +23,8 @@ export type IpcErrorCode =
   | "UNKNOWN_ERROR"
   | "TEMPLATE_NOT_FOUND"
   | "TEMPLATE_ERROR"
-  | "AUTO_LAUNCH_ERROR";
+  | "AUTO_LAUNCH_ERROR"
+  | "RICH_PRESENCE_ERROR";
 
 /** IPC統一エラー応答 */
 export interface IpcError {
@@ -268,6 +269,28 @@ export interface AutoLaunchSetResponse {
 }
 
 // =============================================================================
+// Rich Presence Types
+// =============================================================================
+
+/** richPresence:get request (void) */
+export type RichPresenceGetRequest = void;
+
+/** richPresence:get response */
+export interface RichPresenceGetResponse {
+  enabled: boolean;
+}
+
+/** richPresence:set request */
+export interface RichPresenceSetRequest {
+  enabled: boolean;
+}
+
+/** richPresence:set response */
+export interface RichPresenceSetResponse {
+  success: true;
+}
+
+// =============================================================================
 // IPC Channels
 // =============================================================================
 
@@ -294,6 +317,8 @@ export const IpcChannels = {
   TEMPLATES_APPLY: "templates:apply",
   AUTO_LAUNCH_GET: "autoLaunch:get",
   AUTO_LAUNCH_SET: "autoLaunch:set",
+  RICH_PRESENCE_GET: "richPresence:get",
+  RICH_PRESENCE_SET: "richPresence:set",
   APP_WINDOW_HIDDEN: "app:windowHidden",
   APP_GET_UPDATE_STATUS: "app:getUpdateStatus",
   APP_CLEAR_UPDATE_TOAST: "app:clearUpdateToast",
@@ -379,4 +404,10 @@ export interface ShellApi {
 export interface AutoLaunchApi {
   getState(): Promise<AutoLaunchGetResponse | IpcError>;
   setState(request: AutoLaunchSetRequest): Promise<AutoLaunchSetResponse | IpcError>;
+}
+
+/** Rich Presence API */
+export interface RichPresenceApi {
+  getState(): Promise<RichPresenceGetResponse | IpcError>;
+  setState(request: RichPresenceSetRequest): Promise<RichPresenceSetResponse | IpcError>;
 }

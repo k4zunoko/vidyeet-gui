@@ -27,6 +27,9 @@ import {
   type AutoLaunchApi,
   type AutoLaunchGetResponse,
   type AutoLaunchSetRequest,
+  type RichPresenceApi,
+  type RichPresenceGetResponse,
+  type RichPresenceSetRequest,
 } from './types/ipc'
 
 // =============================================================================
@@ -253,4 +256,23 @@ const autoLaunchApi: AutoLaunchApi = {
 }
 
 contextBridge.exposeInMainWorld('autoLaunch', autoLaunchApi)
+
+// =============================================================================
+// Rich Presence API
+// =============================================================================
+
+/**
+ * Rich Presence API - window.richPresence として公開
+ */
+const richPresenceApi: RichPresenceApi = {
+  async getState(): Promise<RichPresenceGetResponse | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.RICH_PRESENCE_GET)
+  },
+
+  async setState(request: RichPresenceSetRequest): Promise<{ success: true } | IpcError> {
+    return await ipcRenderer.invoke(IpcChannels.RICH_PRESENCE_SET, request)
+  },
+}
+
+contextBridge.exposeInMainWorld('richPresence', richPresenceApi)
 

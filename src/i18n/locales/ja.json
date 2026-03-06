@@ -85,7 +85,8 @@
         "languageDesc": "インターフェースの表示言語",
         "autoLaunch": "自動起動設定",
         "theme": "テーマ設定",
-        "themeDesc": "アプリの外観テーマを選択"
+        "themeDesc": "アプリの外観テーマを選択",
+        "richPresence": "Discord Rich Presence"
       },
       "language": {
         "label": "表示言語",
@@ -96,6 +97,9 @@
       },
       "autoLaunch": {
         "label": "PCの起動時に自動起動"
+      },
+      "richPresence": {
+        "label": "Discord Rich Presence を有効にする"
       },
       "theme": {
         "label": "テーマ",

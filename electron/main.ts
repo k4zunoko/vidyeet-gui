@@ -25,7 +25,9 @@ import {
   setUpdaterState,
 } from "./ipc/updater";
 import { registerAutoLaunchHandlers } from "./ipc/autoLaunch";
+import { registerRichPresenceHandlers } from "./ipc/richPresence";
 import autoLaunchManager from "./services/autoLaunchManager";
+import { rpcdManager } from "./services/rpcdManager";
 import Store from "electron-store";
 
 // Constants for auto-update error messages
@@ -375,6 +377,7 @@ app.on("window-all-closed", () => {
 
 // アプリが実際に終了するときにフラグを設定
 app.on("before-quit", () => {
+  rpcdManager.stop();
   isQuitting = true;
 });
 
@@ -524,4 +527,6 @@ function continueStartup(): void {
     runUpdateCheck,
   );
   registerAutoLaunchHandlers();
+  registerRichPresenceHandlers();
+  rpcdManager.start();
 }
